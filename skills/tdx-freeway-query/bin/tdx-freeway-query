@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""tdx-freeway-query CLI — 國道指定路段事件 + 即時車速查詢。
+
+用法：
+  tdx-freeway-query --road 國道1號 --direction 北向 --from 中正交流道 --to 岡山交流道
+  tdx-freeway-query --road 國道3號 --direction 南向 --from 大溪 --to 龍潭
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.freeway_query import query_segment
+
+
+def _parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        prog="tdx-freeway-query",
+        description="查詢國道指定路段事件（事故/施工/管制）+ 即時車速",
+    )
+    p.add_argument("--road",      required=True, help="路名，如「國道1號」「國道3號」")
+    p.add_argument("--direction", required=True, choices=["北向", "南向"], help="行駛方向")
+    p.add_argument("--from",     dest="from_ic", required=True, help="起點交流道名稱")
+    p.add_argument("--to",       dest="to_ic",   required=True, help="終點交流道名稱")
+    return p.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
+    result = query_segment(args.road, args.direction, args.from_ic, args.to_ic)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    if result["status"] not in ("ok",):
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
