@@ -37,7 +37,10 @@ def send_embed(embed: dict[str, Any], *, dry_run: bool = False) -> None:
     req = urllib.request.Request(
         url,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "DiscordBot (openclaw, 1.0)",
+        },
         method="POST",
     )
     try:
