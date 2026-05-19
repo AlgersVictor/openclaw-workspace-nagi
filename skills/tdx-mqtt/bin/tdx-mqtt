@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""TDX MQTT CLI — 訂閱 TDX MQTT Topic 並輸出 JSON。
+
+用法：
+  tdx-mqtt --topic v2/Rail/Metro/Alert/TRTC --timeout 10 --mode oneshot
+  tdx-mqtt --list-topics
+  tdx-mqtt --topic-key metro_alert --operator TRTC --timeout 30 --mode collect
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+# 讓 tools/ 可 import
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.mqtt_subscriber import subscribe
+from tools.topic_registry import list_topics, resolve_topic
+
+
+def _parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        prog="tdx-mqtt",
+        description="訂閱 TDX MQTT Topic，輸出 JSON",
+    )
+    group = p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--topic", metavar="TOPIC", help="直接指定 MQTT Topic（支援 # 萬用字元）")
+    group.add_argument("--topic-key", metavar="KEY", help="用 topic_key 展開，見 --list-topics")
+    group.add_argument("--list-topics", action="store_true", help="列出所有支援的 Topic Key")
+
+    p.add_argument("--city",     default="#", help="縣市代碼（topic-key 含 {city} 時使用，預設 #）")
+    p.add_argument("--operator", default="#", help="捷運系統代碼（metro_alert 用，預設 #）")
+    p.add_argument("--timeout",  type=float, default=30.0, help="等待秒數（預設 30）")
+    p.add_argument("--mode",     choices=["oneshot", "collect", "daemon"], default="oneshot",
+                   help="oneshot|collect|daemon（預設 oneshot）")
+    p.add_argument("--qos",      type=int, choices=[0, 1, 2], default=1, help="QoS（預設 1）")
+    return p.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
+
+    if args.list_topics:
+        print(json.dumps(list_topics(), ensure_ascii=False, indent=2))
+        return
+
+    if args.topic_key:
+        try:
+            topic = resolve_topic(args.topic_key, city=args.city, operator=args.operator)
+        except ValueError as exc:
+            print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False))
+            sys.exit(1)
+    else:
+        topic = args.topic
+
+    result = subscribe(topic, timeout=args.timeout, mode=args.mode, qos=args.qos)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+    if result["status"] not in ("ok", "timeout"):
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
