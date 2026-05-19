@@ -261,6 +261,19 @@
 - 不可把兩者混寫成「中央氣象署 TDX」
 - 每日簡報中若同時包含天氣與交通，分開列出來源
 
+### TDX skill 使用透明度規則
+回覆涉及 TDX 查詢時，**必須明確標出使用的 skill 名稱**，不可模糊說「TDX 路況相關 skill」：
+- 國道路段查詢 → 標注「`tdx-freeway-query`」
+- 城市公車查詢 → 標注「`tdx-local-query (bus_realtime)`」
+- 雙鐵班次查詢 → 標注「`tdx-local-query (rail_query)`」
+- 捷運查詢 → 標注「`tdx-metro-query`」
+- 停車查詢 → 標注「`tdx-parking-query`」
+- 城市路況 → 標注「`tdx-road-live`」
+- 道路事件 → 標注「`tdx-road-event`」
+- 觀光景點 → 標注「`tdx-tourism-info`」
+- 同一回覆用了多支 skill（如 `tdx-freeway-query` + `tdx-road-event`），分開列出各自結果與 skill 名稱。
+- 標注位置：回覆末段補充說明，格式：「📡 資料來源：`skill名稱`（TDX 運輸資料流通服務）」
+
 ### 澄清規則
 - 若缺城市：先問，不可硬猜。
   - 例：307 還有多久 → 先問「請問是哪個城市的 307？」
