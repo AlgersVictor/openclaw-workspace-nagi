@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""TDX MQTT Listener CLI — 持續監聽 TDX MQTT 並推播 Discord。
+
+用法：
+  tdx-mqtt-listener --topics v2/Rail/Metro/Alert/#
+  tdx-mqtt-listener --topics v2/Rail/Metro/Alert/#,v3/Rail/TRA/Alert --dry-run
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.listener import ListenerAuthError, run
+
+
+def _parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        prog="tdx-mqtt-listener",
+        description="持續訂閱 TDX MQTT，收到通阻訊息後送 Discord Webhook",
+    )
+    p.add_argument(
+        "--topics",
+        default="v2/Rail/Metro/Alert/#",
+        help="訂閱 Topic（逗號分隔，支援 # 萬用字元）預設 v2/Rail/Metro/Alert/#",
+    )
+    p.add_argument(
+        "--reconnect-delay",
+        type=float,
+        default=30.0,
+        metavar="SEC",
+        help="斷線重連等待秒數（預設 30）",
+    )
+    p.add_argument(
+        "--qos",
+        type=int,
+        choices=[0, 1, 2],
+        default=1,
+        help="MQTT QoS（預設 1）",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="只印 Discord Embed JSON，不實際送出",
+    )
+    p.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Log level（預設 INFO）",
+    )
+    return p.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    )
+    topics = [t.strip() for t in args.topics.split(",") if t.strip()]
+    try:
+        run(
+            topics,
+            reconnect_delay=args.reconnect_delay,
+            qos=args.qos,
+            dry_run=args.dry_run,
+        )
+    except ListenerAuthError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
