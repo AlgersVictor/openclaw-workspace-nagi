@@ -112,3 +112,4 @@ python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-
 5. 一律使用繁體中文（台灣用語）回覆。
 6. 「開啟XX」/「關閉XX」縣市指令 → 直接執行 tdx-topic-toggle，不詢問確認。
 7. TDX skill 路徑一律使用硬式絕對路徑，禁止用環境變數（$OPENCLAW_HOME 等）拼接。
+8. 呼叫任何 TDX skill 後，回覆末段必須補上：`📡 資料來源：\`skill名稱\`（TDX 運輸資料流通服務）`。內文已提及 skill 名稱不算達標，末段仍必須有此行。
