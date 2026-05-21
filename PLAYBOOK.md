@@ -395,6 +395,7 @@
 - 任一 TDX skill 回傳 `upstream_error`（含 429）後，禁止對相同 endpoint + city 組合繼續發送請求。
 - 直接回報：「[city] 路況端點目前暫時不可用，建議稍後再試。」
 - 不可再用不同參數組合（如 roadClass、limit）對同一 endpoint 重試。
+- **exit code 語義**：`tdx-road-live` 與 `tdx-freeway-query` 的 exit code 定義如下——exit 0 = 成功；exit 1 = 輸入錯誤或未知失敗；**exit 2 = 上游錯誤（upstream_error / rate_limited / auth_error），收到 exit 2 後立即停止，不重試**。
 
 **skill 回傳 `mapped_only` 或 `not_prechecked` 時的處理：**
 - 誠實告知：「此查詢功能目前資料有限，尚未支援即時查詢」

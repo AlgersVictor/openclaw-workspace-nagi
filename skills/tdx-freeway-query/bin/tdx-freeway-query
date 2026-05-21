@@ -34,7 +34,9 @@ def main() -> None:
     args = _parse_args()
     result = query_segment(args.road, args.direction, args.from_ic, args.to_ic)
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    if result["status"] not in ("ok",):
+    if result["status"] in ("upstream_error", "rate_limited", "auth_error"):
+        sys.exit(2)  # exit 2 = 上游錯誤，禁止重試
+    elif result["status"] not in ("ok",):
         sys.exit(1)
 
 

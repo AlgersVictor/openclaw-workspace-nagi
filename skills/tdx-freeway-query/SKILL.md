@@ -1,3 +1,5 @@
+> ⛔ **凪：禁止讀本檔案。** 指令格式已在 PLAYBOOK.md「TDX execution hard guard」列明，以 PLAYBOOK 為唯一來源。
+
 name: tdx-freeway-query
 description: 查詢國道指定路段（起訖交流道）的即時事件（事故/施工/管制）與車速。
 trigger: 使用者詢問「國道X號 北/南向 從A交流道到B交流道有沒有事故/塞車/施工」
