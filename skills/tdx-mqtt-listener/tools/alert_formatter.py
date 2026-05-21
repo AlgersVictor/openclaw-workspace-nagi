@@ -45,6 +45,12 @@ def format_embed(topic: str, payload: Any) -> dict[str, Any]:
     """將單筆 MQTT 訊息轉為 Discord Embed dict。"""
     label = _topic_label(topic)
 
+    # list payload → 取第一筆，標題補 (x筆)
+    list_suffix = ""
+    if isinstance(payload, list):
+        list_suffix = f" ({len(payload)}筆)"
+        payload = payload[0] if payload else {}
+
     # 嘗試提取標題與說明（各 API payload 欄位名稱不同）
     title_text = _extract_text(payload, [
         "Title", "AlertTitle", "Subject", "NewsTitle",
@@ -75,9 +81,10 @@ def format_embed(topic: str, payload: Any) -> dict[str, Any]:
             if val:
                 fields.append({"name": key, "value": str(val), "inline": True})
 
+    full_title = f"[{label}] {title_text}{list_suffix}"
     return {
-        "title": f"[{label}] {title_text}",
-        "description": desc_text,
+        "title": full_title[:256],
+        "description": desc_text[:4096],
         "color": color,
         "fields": fields,
         "footer": {"text": f"TDX MQTT  ·  {_ts_now()}"},
