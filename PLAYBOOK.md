@@ -106,9 +106,15 @@
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query offstreet --city 台北
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query nearby --city 高雄 --landmark 高雄車站
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query keyword_search --city 台北 --keyword 轉運站
-   - 必要參數：`--city`（城市名）
+   - 必要參數：`--city`（城市名或鄉鎮市區名）
+   - `--city` 支援鄉鎮市區名稱自動推導縣市：
+     - `--city 潮州` → 自動推導為屏東縣（不須澄清）
+     - `--city 羅東` → 自動推導為宜蘭縣
+     - `--city 板橋` → 自動推導為新北市
+     - `--city 大安區`（歧義）→ skill 回傳 needs_clarification → 再澄清
+   - 訊息中出現鄉鎮市區名稱（如「潮州停車場」「羅東停車位」），直接用區名當 `--city` 參數，不須先澄清縣市
    - `onstreet` 與 `spot` 端點為 mapped_only / not_prechecked，誠實告知資料有限
-   - 缺 city 先澄清，不可猜測
+   - 確實完全缺城市資訊時才澄清（例如「附近有停車場嗎」無任何地名）
 
 5. **明確路況查詢** → 呼叫 `tdx-road-live`
    - 城市路況摘要、交通壅塞
@@ -261,11 +267,12 @@
    - 環境變數需由 `/home/amakumo/.openclaw/workspace/runtime/tdx/.env` 載入
 
 4. 停車場查詢
-   - 例：台北哪裡還有停車位、附近停車場
+   - 例：台北哪裡還有停車位、附近停車場、潮州停車位、羅東哪裡停車
    - 優先使用：
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query offstreet --city 台北
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query nearby --city 高雄 --landmark 高雄車站
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query keyword_search --city 台北 --keyword 轉運站
+   - `--city` 支援鄉鎮市區名稱（潮州 → 屏東、羅東 → 宜蘭、板橋 → 新北），直接傳入，skill 自動推導縣市
    - 以路外停車 (OffStreet) 為主；onstreet / spot 資料有限，誠實告知
    - 環境變數需由 `/home/amakumo/.openclaw/workspace/runtime/tdx/.env` 載入
 
@@ -352,8 +359,12 @@
 ### 澄清規則
 - 若缺城市：先問，不可硬猜。
   - 例：307 還有多久 → 先問「請問是哪個城市的 307？」
-  - 例：附近停車位 → 先問「請問是哪個城市？」
+  - 例：附近停車位（完全無地名）→ 先問「請問是哪個城市？」
   - 例：路況怎麼樣 → 先問「請問想查哪個城市的路況？」
+- **例外：訊息中含鄉鎮市區名稱可直接推導縣市，不須澄清**
+  - 例：潮州停車位 → `--city 潮州`（skill 自動推導屏東縣），直接查詢
+  - 例：羅東附近停車 → `--city 羅東`（skill 自動推導宜蘭縣），直接查詢
+  - 只有當 skill 回傳 `needs_clarification`（如歧義的 `大安區`）時才澄清
 - 若缺起點或終點：先問，不可直接規劃。
 - 若站名 / 路線撞名：先澄清。
 
