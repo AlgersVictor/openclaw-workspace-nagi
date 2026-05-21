@@ -261,7 +261,7 @@ class TestResolveStationAlias:
     def test_known_station_krtc(self):
         r = resolve_station_alias("美麗島", "KRTC")
         assert r["status"] == "ok"
-        assert r["normalized_value"] == "美麗島站"
+        assert r["normalized_value"] == "美麗島"
 
     def test_ambiguous_returns_candidates(self):
         r = resolve_station_alias("左營")
@@ -276,6 +276,41 @@ class TestResolveStationAlias:
         # 美麗島 in KLRT has station_name=None → should not return ok
         r = resolve_station_alias("美麗島", "KLRT")
         assert r["status"] != "ok"
+
+    def test_trtc_transfer_station(self):
+        r = resolve_station_alias("忠孝復興", "TRTC")
+        assert r["status"] == "ok"
+        assert r["normalized_value"] == "忠孝復興"
+        assert "BL15" in r["details"]["station_id"]
+        assert "BR10" in r["details"]["station_id"]
+
+    def test_trtc_single_line_station(self):
+        r = resolve_station_alias("淡水", "TRTC")
+        assert r["status"] == "ok"
+        assert r["normalized_value"] == "淡水"
+        assert r["details"]["station_id"] == "R28"
+
+    def test_trtc_short_alias(self):
+        r = resolve_station_alias("小巨蛋", "TRTC")
+        assert r["status"] == "ok"
+        assert r["normalized_value"] == "台北小巨蛋"
+
+    def test_trtc_ambiguous_daan(self):
+        r = resolve_station_alias("大安")
+        assert r["needs_clarification"] is True
+        assert len(r["candidates"]) >= 2
+
+    def test_krtc_single_station(self):
+        r = resolve_station_alias("高雄車站", "KRTC")
+        assert r["status"] == "ok"
+        assert r["normalized_value"] == "高雄車站"
+        assert r["details"]["station_id"] == "R11"
+
+    def test_krtc_left_station_no_suffix(self):
+        r = resolve_station_alias("左營", "KRTC")
+        assert r["status"] == "ok"
+        assert r["normalized_value"] == "左營"
+        assert r["details"]["station_id"] == "R16"
 
 
 # ---------------------------------------------------------------------------
