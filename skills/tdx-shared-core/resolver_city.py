@@ -238,6 +238,7 @@ DISTRICT_TO_CITY: dict[str, str] = {
     "鳳山區": "Kaohsiung",
     "林園區": "Kaohsiung",
     "大寮區": "Kaohsiung",
+    "鳥松區": "Kaohsiung",
     "大樹區": "Kaohsiung",
     # ── 基隆市（跳過歧義：信義區/中正區/中山區）────────────────
     "仁愛區": "Keelung",
