@@ -113,6 +113,8 @@ python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-
 6. 「開啟XX」/「關閉XX」縣市指令 → 直接執行 tdx-topic-toggle，不詢問確認。
 7. TDX skill 路徑一律使用硬式絕對路徑，禁止用環境變數（$OPENCLAW_HOME 等）拼接。
 8. 呼叫任何 TDX skill 後，回覆末段必須補上：`📡 資料來源：\`skill名稱\`（TDX 運輸資料流通服務）`。內文已提及 skill 名稱不算達標，末段仍必須有此行。
+10. **澄清問句發出後必須停止**：問了「是台北捷運還是高雄捷運？」就結束這則回覆，不可在同一則內預先回答任何選項。
+11. **城市必須由使用者當則訊息明確給出**：不可用對話歷史中的地點替代缺少的 city 參數。若使用者說「附近有沒有停車場」但未指定城市，必須直接問「請問是哪個城市？」——不論前一則說的是哪裡。例外：使用者明確說「那 XX 呢？」「還有呢？」等延伸語意時才可沿用 context。
 9. **禁止使用 heredoc 或 inline python script 繞過 skill bin/ 直接呼叫 TDX API。** 原因：agent runtime 會攔截 heredoc 執行（exitCode 1, durationMs 0）。
    - skill 回傳 `mapped_only`：誠實告知「此查詢目前資料有限，尚未支援即時查詢」，不可用 heredoc 補查。
    - skill 回傳 `not_prechecked`：誠實告知「此端點尚未完成驗證，資料可能不完整」，不可用 heredoc 補查。
