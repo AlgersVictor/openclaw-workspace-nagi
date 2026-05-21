@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.listener import ListenerAuthError, run
+from tools.topic_groups import load_config, get_extra_topics
 
 
 def _parse_args() -> argparse.Namespace:
@@ -27,6 +28,12 @@ def _parse_args() -> argparse.Namespace:
         "--topics",
         default="v2/Rail/Metro/Alert/#",
         help="訂閱 Topic（逗號分隔，支援 # 萬用字元）預設 v2/Rail/Metro/Alert/#",
+    )
+    p.add_argument(
+        "--groups-config",
+        default=None,
+        metavar="PATH",
+        help="群組設定 JSON 路徑（台北/台中等可切換群組）",
     )
     p.add_argument(
         "--reconnect-delay",
@@ -64,6 +71,11 @@ def main() -> None:
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
     topics = [t.strip() for t in args.topics.split(",") if t.strip()]
+    if args.groups_config:
+        from pathlib import Path
+        cfg = load_config(Path(args.groups_config))
+        extra = get_extra_topics(cfg)
+        topics = list(dict.fromkeys(topics + extra))  # 去重保序
     try:
         run(
             topics,

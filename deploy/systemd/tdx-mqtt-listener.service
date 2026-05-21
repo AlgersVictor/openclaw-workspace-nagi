@@ -7,7 +7,8 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 ExecStart=/home/linuxbrew/.linuxbrew/bin/python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-mqtt-listener/bin/tdx-mqtt-listener \
-    --topics "v2/Bus/Alert/City/Kaohsiung,v2/Rail/Metro/Alert/KRTC,v3/Rail/TRA/Alert,v2/Rail/THSR/AlertInfo"
+    --topics "v2/Bus/Alert/City/Kaohsiung,v2/Rail/Metro/Alert/KRTC,v3/Rail/TRA/Alert,v2/Rail/THSR/AlertInfo" \
+    --groups-config /home/amakumo/.openclaw/workspace/runtime/tdx/mqtt_groups.json
 WorkingDirectory=/home/amakumo/.openclaw/workspace-nagi
 EnvironmentFile=/home/amakumo/.openclaw/workspace/runtime/tdx/.env
 Restart=always

@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""TDX MQTT Topic 群組開關 CLI。
+
+用法：
+  tdx-topic-toggle --action enable  --group taipei
+  tdx-topic-toggle --action disable --group taichung
+  tdx-topic-toggle --status
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tdx-mqtt-listener"))
+
+from tools.topic_groups import GROUPS, load_config, save_config
+
+DEFAULT_CONFIG_PATH = Path.home() / ".openclaw/workspace/runtime/tdx/mqtt_groups.json"
+SYSTEMD_SERVICE = "tdx-mqtt-listener.service"
+
+
+def _parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(prog="tdx-topic-toggle")
+    sub = p.add_subparsers(dest="cmd")
+
+    toggle = sub.add_parser("toggle", help="開啟或關閉群組")
+    toggle.add_argument("--action", choices=["enable", "disable"], required=True)
+    toggle.add_argument("--group", choices=list(GROUPS), required=True)
+    toggle.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+    toggle.add_argument("--no-restart", action="store_true", help="不重啟 service")
+
+    status = sub.add_parser("status", help="顯示目前群組狀態")
+    status.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+
+    return p.parse_args()
+
+
+def cmd_toggle(args: argparse.Namespace) -> int:
+    config_path = Path(args.config)
+    cfg = load_config(config_path)
+    cfg[args.group] = (args.action == "enable")
+    save_config(config_path, cfg)
+
+    state = "開啟" if cfg[args.group] else "關閉"
+    topics = GROUPS[args.group]
+    print(json.dumps({
+        "status": "ok",
+        "group": args.group,
+        "state": state,
+        "topics": topics,
+        "config_path": str(config_path),
+    }, ensure_ascii=False, indent=2))
+
+    if not args.no_restart:
+        result = subprocess.run(
+            ["systemctl", "--user", "restart", SYSTEMD_SERVICE],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            print(f"[OK] {SYSTEMD_SERVICE} 已重啟")
+        else:
+            print(f"[WARN] restart 失敗：{result.stderr.strip()}", file=sys.stderr)
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    config_path = Path(args.config)
+    cfg = load_config(config_path)
+    rows = []
+    for group, enabled in cfg.items():
+        rows.append({
+            "group": group,
+            "enabled": enabled,
+            "topics": GROUPS[group],
+        })
+    print(json.dumps(rows, ensure_ascii=False, indent=2))
+    return 0
+
+
+def main() -> None:
+    args = _parse_args()
+    if args.cmd == "toggle":
+        sys.exit(cmd_toggle(args))
+    elif args.cmd == "status":
+        sys.exit(cmd_status(args))
+    else:
+        print("用法：tdx-topic-toggle toggle --action enable|disable --group taipei|taichung")
+        print("      tdx-topic-toggle status")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

@@ -118,6 +118,21 @@
      - `sections`：每段「路段名 speed_kmh km/h（congestion）」，用 🚗 開頭
      - km_range 解析失敗時（"未能解析"）：說明改以交流道關鍵字模糊比對
 
+6c. **TDX MQTT 通知群組切換** → 呼叫 `tdx-topic-toggle`
+   - 觸發關鍵字：「開啟台北」「關閉台北」「開啟台中」「關閉台中」
+   - 群組對應：
+     - 台北 = 台北公車 + 新北公車 + 台北捷運（TRTC）
+     - 台中 = 台中公車 + 台中捷運（TMRT）
+   - 開啟範例指令：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-topic-toggle toggle --action enable --group taipei
+   - 關閉範例指令：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-topic-toggle toggle --action disable --group taipei
+   - 台中同理，--group taichung
+   - 執行後自動重啟 tdx-mqtt-listener，約 2 秒生效
+   - 查詢目前狀態：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-topic-toggle status
+   - 回覆格式：「✅ 台北通阻通知已開啟（台北公車、新北公車、台北捷運）」或「🔕 台北通阻通知已關閉」
+
 7. **明確觀光 / 景點 / 餐廳查詢** → 呼叫 `tdx-tourism-info`
    - 景點資訊、餐廳查詢
    - Hotel / Activity 資料有限，誠實告知
