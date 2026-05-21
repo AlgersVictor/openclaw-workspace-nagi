@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.freeway_query import _normalize_ic, _km_float, _resolve_km_range, query_segment
+from tools.freeway_query import _normalize_ic, _km_float, _resolve_km_range
 
 # ---------------------------------------------------------------------------
 # 工具函式
@@ -140,58 +140,47 @@ def _mock_client_factory(events):
 
 
 class TestQuerySegment:
-    def _patch(self, events):
+    def _make_mocks(self, events):
         mock_auth = MagicMock()
         mock_client = MagicMock()
         mock_client.get.side_effect = _mock_client_factory(events)
         return mock_auth, mock_client
 
-    def test_no_events(self):
-        mock_auth, mock_client = self._patch(_MOCK_EVENTS_EMPTY)
-        with patch("tools.freeway_query.TdxAuthManager", return_value=mock_auth), \
-             patch("tools.freeway_query.TdxClient", return_value=mock_client):
-            result = query_segment("國道1號", "北向", "中正交流道", "岡山交流道")
+    def _run(self, events, *args, **kwargs):
+        """Import module fresh (after conftest reloads tools.*), then call query_segment."""
+        import tools.freeway_query as fq
+        mock_auth, mock_client = self._make_mocks(events)
+        with patch.object(fq, "TdxAuthManager", return_value=mock_auth), \
+             patch.object(fq, "TdxClient", return_value=mock_client):
+            return fq.query_segment(*args, **kwargs)
 
+    def test_no_events(self):
+        result = self._run(_MOCK_EVENTS_EMPTY, "國道1號", "北向", "中正交流道", "岡山交流道")
         assert result["status"] == "ok"
         assert result["event_count"] == 0
         assert "無事故" in result["summary"]
 
     def test_with_accident(self):
-        mock_auth, mock_client = self._patch(_MOCK_EVENTS_WITH_ACCIDENT)
-        with patch("tools.freeway_query.TdxAuthManager", return_value=mock_auth), \
-             patch("tools.freeway_query.TdxClient", return_value=mock_client):
-            result = query_segment("國道1號", "北向", "中正交流道", "岡山交流道")
-
+        result = self._run(_MOCK_EVENTS_WITH_ACCIDENT, "國道1號", "北向", "中正交流道", "岡山交流道")
         assert result["event_count"] == 1
         assert result["events"][0]["type"] == "事故"
         assert result["events"][0]["step"] == "發生中"
         assert result["events"][0]["severity"] == "中等"
 
     def test_sections_returned(self):
-        mock_auth, mock_client = self._patch(_MOCK_EVENTS_EMPTY)
-        with patch("tools.freeway_query.TdxAuthManager", return_value=mock_auth), \
-             patch("tools.freeway_query.TdxClient", return_value=mock_client):
-            result = query_segment("國道1號", "北向", "中正交流道", "岡山交流道")
-
+        result = self._run(_MOCK_EVENTS_EMPTY, "國道1號", "北向", "中正交流道", "岡山交流道")
         assert len(result["sections"]) > 0
         s = result["sections"][0]
         assert "speed_kmh" in s
         assert "congestion" in s
 
     def test_output_schema(self):
-        mock_auth, mock_client = self._patch(_MOCK_EVENTS_EMPTY)
-        with patch("tools.freeway_query.TdxAuthManager", return_value=mock_auth), \
-             patch("tools.freeway_query.TdxClient", return_value=mock_client):
-            result = query_segment("國道1號", "北向", "中正交流道", "岡山交流道")
-
+        result = self._run(_MOCK_EVENTS_EMPTY, "國道1號", "北向", "中正交流道", "岡山交流道")
         for key in ("status", "road", "direction", "from_ic", "to_ic",
                     "km_range", "summary", "events", "event_count", "sections"):
             assert key in result
 
     def test_normalize_ic_in_query(self):
         """不帶「交流道」後綴也能查詢。"""
-        mock_auth, mock_client = self._patch(_MOCK_EVENTS_EMPTY)
-        with patch("tools.freeway_query.TdxAuthManager", return_value=mock_auth), \
-             patch("tools.freeway_query.TdxClient", return_value=mock_client):
-            result = query_segment("國道1號", "北向", "中正", "岡山")
+        result = self._run(_MOCK_EVENTS_EMPTY, "國道1號", "北向", "中正", "岡山")
         assert result["status"] == "ok"
