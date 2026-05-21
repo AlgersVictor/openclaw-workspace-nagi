@@ -217,8 +217,11 @@
   - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-freeway-query/bin/tdx-freeway-query --road <路名> --direction <北向|南向> --from <起點> --to <終點>`
   - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query <sub_command> --system <TRTC|KRTC|KLRT> --station-name <站名>`
   - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query <sub_command> --city <城市>`
-- 對於 tdx-road-live、tdx-road-event、tdx-tourism-info：
-  - 這三支 skill 為 Python 模組型，無 bin/ CLI 入口
+- 城市路況／道路事件查詢：**只能使用 wrapper**，禁止分別呼叫：
+  - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query --city <城市> [--keyword <路段>] [--top <筆數>]`
+  - 禁止直接呼叫 `tdx-road-live` 或 `tdx-road-event` 處理城市路況（並行會 429）
+- 對於 tdx-tourism-info：
+  - 此 skill 為 Python 模組型，無 bin/ CLI 入口
   - 透過 OpenClaw skill 系統呼叫（由 skill resolver 自動 routing）
   - 不可自行編造不存在的 CLI 指令路徑
   - 若 skill 回傳 `needs_clarification` 或 `invalid_input`，照其指示澄清
@@ -277,14 +280,13 @@
    - 以路外停車 (OffStreet) 為主；onstreet / spot 資料有限，誠實告知
    - 環境變數需由 `/home/amakumo/.openclaw/workspace/runtime/tdx/.env` 載入
 
-5. 路況查詢
-   - 例：台北現在哪裡塞車、高雄路況
-   - 優先呼叫 `tdx-road-live`（透過 OpenClaw skill 系統）
+5. 城市路況／道路事件查詢（**必須使用 wrapper，禁止分別呼叫**）
+   - 例：台北現在哪裡塞車、高雄路況、台南現在有哪些道路事件
+   - **必須使用**：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query --city <城市> [--keyword <路段>] [--top <筆數>]
+   - **禁止**直接分別呼叫 `tdx-road-live` + `tdx-road-event`（並行會觸發 TDX 429）
+   - wrapper 內部序列：road-event 先 → exit 0 後再補 road-live；任一 exit 2 → 停止
    - 不可拿一般新聞冒充 TDX 路況資料
-
-6. 道路事件查詢
-   - 例：台南現在有哪些道路事件、高速公路事故
-   - 優先呼叫 `tdx-road-event`（透過 OpenClaw skill 系統）
 
 6b. 國道指定路段查詢（起訖交流道）
    - 例：國道1號北向中正交流道到岡山有沒有事故、國道3號南向塞不塞

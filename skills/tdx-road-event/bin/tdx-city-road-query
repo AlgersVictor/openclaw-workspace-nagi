@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""tdx-city-road-query: 城市路況序列查詢（road-event 優先，road-live 補充）。
+
+用法：
+  tdx-city-road-query --city 高雄
+  tdx-city-road-query --city 高雄 --keyword 三多 --top 5
+
+設計原則：
+  - road-event 先跑；若 exit 2（upstream_error/429）→ 立即回傳 exit 2，不繼續。
+  - road-event 成功後才補查 road-live；road-live 失敗不影響整體 exit code。
+  - 禁止凪直接並行呼叫 road-event + road-live，統一走此 wrapper。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+_BIN = Path(__file__).resolve().parent
+_SKILLS = _BIN.parents[1]
+_ROAD_EVENT = _SKILLS / "tdx-road-event" / "bin" / "tdx-road-event"
+_ROAD_LIVE  = _SKILLS / "tdx-road-live"  / "bin" / "tdx-road-live"
+
+
+def _run(cmd: list[str]) -> tuple[int, dict]:
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    raw = r.stdout.strip() or r.stderr.strip()
+    try:
+        return r.returncode, json.loads(raw)
+    except Exception:
+        return r.returncode, {"status": "error", "summary": raw[:300]}
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(
+        prog="tdx-city-road-query",
+        description="城市路況序列查詢（road-event 優先，road-live 補充）",
+    )
+    p.add_argument("--city",    required=True,          help="城市名稱（如 高雄、台北）")
+    p.add_argument("--keyword", default="",             help="路段關鍵字過濾（可省略）")
+    p.add_argument("--top",     type=int, default=5,    help="每支查詢回傳筆數上限（預設 5）")
+    args = p.parse_args()
+
+    # Step 1 — road-event（主資料來源）
+    event_cmd = [
+        "python3", str(_ROAD_EVENT),
+        "road_event_live_city",
+        "--city", args.city,
+        "--top", str(args.top),
+    ]
+    if args.keyword:
+        event_cmd += ["--keyword", args.keyword]
+
+    event_ec, event_result = _run(event_cmd)
+    if event_ec == 2:
+        # 上游錯誤，禁止重試
+        print(json.dumps(event_result, ensure_ascii=False, indent=2))
+        sys.exit(2)
+
+    # Step 2 — road-live（補充，失敗不中斷）
+    live_cmd = [
+        "python3", str(_ROAD_LIVE),
+        "traffic_live_summary",
+        "--city", args.city,
+        "--top", str(args.top),
+    ]
+    if args.keyword:
+        live_cmd += ["--keyword", args.keyword]
+
+    _, live_result = _run(live_cmd)
+
+    combined = {
+        "status": "ok",
+        "city": args.city,
+        "road_event": event_result,
+        "road_live": live_result,
+    }
+    print(json.dumps(combined, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
