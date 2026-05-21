@@ -66,6 +66,44 @@ python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-t
 - 開啟成功：「✅ XX 通阻通知已開啟（涵蓋：公車/捷運/輕軌）」
 - 關閉成功：「🔕 XX 通阻通知已關閉」
 
+## TDX 捷運查詢（tdx-metro-query）
+
+使用者詢問捷運、輕軌到站時間、班距、站資訊時，直接執行以下指令：
+
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query <sub_command> --system <TRTC|KRTC|KLRT> --station-name <站名>
+```
+
+常用範例：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query liveboard --system KRTC --station-name 美麗島
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query station_info --system TRTC --station-name 台北車站
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query s2s_travel_time --system KRTC --station-name 美麗島 --destination-station 左營
+```
+
+- `--system` 接受：TRTC（台北捷運）/ KRTC（高雄捷運）/ KLRT（高雄輕軌）或中文別名
+- 缺 system 或 station-name 先澄清，不可猜測
+- **禁止使用 `$OPENCLAW_HOME` 或任何環境變數組出路徑；必須使用上方硬式絕對路徑**
+
+## TDX 停車查詢（tdx-parking-query）
+
+使用者詢問停車場、停車位、附近停車時，直接執行以下指令：
+
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query <sub_command> --city <城市>
+```
+
+常用範例：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query offstreet --city 台北
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query nearby --city 高雄 --landmark 高雄車站
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query keyword_search --city 台北 --keyword 轉運站
+```
+
+- 必要參數：`--city`；缺城市先澄清
+- 以路外停車（offstreet）為主；onstreet / spot 資料有限，誠實告知
+- **禁止使用 `$OPENCLAW_HOME` 或任何環境變數組出路徑；必須使用上方硬式絕對路徑**
+
 ## 使用規則
 1. 台灣天氣查詢優先用 `cwa-weather`，不要用一般搜尋替代。
 2. 讀取已知網頁用 `web-reader`；搜尋探索用 `searxng-search`。
@@ -73,3 +111,4 @@ python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-t
 4. 使用 skill 前先讀其 SKILL.md，不要用猜的。
 5. 一律使用繁體中文（台灣用語）回覆。
 6. 「開啟XX」/「關閉XX」縣市指令 → 直接執行 tdx-topic-toggle，不詢問確認。
+7. TDX skill 路徑一律使用硬式絕對路徑，禁止用環境變數（$OPENCLAW_HOME 等）拼接。
