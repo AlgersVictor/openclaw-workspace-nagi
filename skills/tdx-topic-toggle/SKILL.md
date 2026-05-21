@@ -5,7 +5,7 @@ scope: TDX MQTT listener 群組動態管理
 
 inputs:
   action: enable | disable
-  group: taipei | taichung
+  group: taipei | taichung | chiayi | yunlin
   config: 設定檔路徑（預設 ~/.openclaw/workspace/runtime/tdx/mqtt_groups.json）
 
 群組定義:
@@ -16,6 +16,11 @@ inputs:
   taichung:
     - v2/Bus/Alert/City/Taichung    (台中公車)
     - v2/Rail/Metro/Alert/TMRT      (台中捷運)
+  chiayi:
+    - v2/Bus/Alert/City/Chiayi      (嘉義市公車)
+    - v2/Bus/Alert/City/ChiayiCounty (嘉義縣公車)
+  yunlin:
+    - v2/Bus/Alert/City/YunlinCounty (雲林縣公車)
 
 workflow:
   1. 讀取 mqtt_groups.json（不存在則預設全 false）

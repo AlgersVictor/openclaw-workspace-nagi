@@ -17,6 +17,13 @@ GROUPS: dict[str, list[str]] = {
         "v2/Bus/Alert/City/Taichung",
         "v2/Rail/Metro/Alert/TMRT",
     ],
+    "chiayi": [
+        "v2/Bus/Alert/City/Chiayi",
+        "v2/Bus/Alert/City/ChiayiCounty",
+    ],
+    "yunlin": [
+        "v2/Bus/Alert/City/YunlinCounty",
+    ],
 }
 
 DEFAULT_CONFIG: dict[str, bool] = {k: False for k in GROUPS}
