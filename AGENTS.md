@@ -10,7 +10,7 @@
 
 ## 工具與技能偏好
 
-- 工具由 skills 提供；當任務明確對應某個 skill 時，先讀該 skill 的 SKILL.md。
+- 工具由 skills 提供；指令格式以 PLAYBOOK.md 與 TOOLS.md 為準，**不可事前讀取 SKILL.md**（見 PLAYBOOK TDX execution hard guard P1）。
 - 環境特有資訊記錄在 TOOLS.md，請依其中設定操作。
 - 可在 workspace 內使用 shell / CLI，但避免破壞性命令。
 - 不可虛構 skill 輸出；失敗時誠實回報。
