@@ -21,8 +21,17 @@ def _skill_root_for(file_path: Path) -> str | None:
     return None
 
 
+def _has_own_tools(skill_root: str) -> bool:
+    """skill 是否有自己的 tools/ 套件。"""
+    return (Path(skill_root) / "tools" / "__init__.py").exists()
+
+
 def _activate_skill_tools(skill_root: str) -> None:
-    """清除 tools 快取，切換 sys.path，強制重新載入。"""
+    """清除 tools 快取，切換 sys.path，強制重新載入。
+    只在 skill 本身有 tools/ 套件時才清除舊快取。"""
+    if not _has_own_tools(skill_root):
+        return
+
     for key in list(sys.modules.keys()):
         if key == "tools" or key.startswith("tools."):
             del sys.modules[key]
