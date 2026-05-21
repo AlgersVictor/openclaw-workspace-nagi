@@ -223,6 +223,7 @@
   - 不可自行編造不存在的 CLI 指令路徑
   - 若 skill 回傳 `needs_clarification` 或 `invalid_input`，照其指示澄清
 - 若缺城市、起點、終點等必要資訊，先澄清，不可直接回「工具尚未安裝」。
+- **[P1] 禁止事前讀取 SKILL.md**：PLAYBOOK 與 AGENTS.md 已列明所有 skill 的完整指令格式；呼叫已知 skill 前，不可用 `cat`、`sed`、`read_file` 等方式讀取 SKILL.md。若指令格式有疑問，以 PLAYBOOK 為準。
 
 ## TDX transport-first routing policy
 
@@ -385,6 +386,15 @@
 - rate_limited
 - invalid_input
 - ambiguous
+
+**[P2] road-event 與 road-live 同城市禁止並行呼叫**：
+- 查詢同一城市路況時，`tdx-road-event` 與 `tdx-road-live` 不可同時發送——先呼叫 `tdx-road-event`，僅在明確需要車速概況且 road-event 已成功回傳後，才補充呼叫 `tdx-road-live`。
+- 原因：同城市並行呼叫會觸發 TDX 429 rate limiting，導致兩支都失敗。
+
+**[P3] upstream_error 後禁止對同一 endpoint+city 追加呼叫**：
+- 任一 TDX skill 回傳 `upstream_error`（含 429）後，禁止對相同 endpoint + city 組合繼續發送請求。
+- 直接回報：「[city] 路況端點目前暫時不可用，建議稍後再試。」
+- 不可再用不同參數組合（如 roadClass、limit）對同一 endpoint 重試。
 
 **skill 回傳 `mapped_only` 或 `not_prechecked` 時的處理：**
 - 誠實告知：「此查詢功能目前資料有限，尚未支援即時查詢」
