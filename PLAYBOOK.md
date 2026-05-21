@@ -366,3 +366,13 @@
 - invalid_input
 - ambiguous
 
+**skill 回傳 `mapped_only` 或 `not_prechecked` 時的處理：**
+- 誠實告知：「此查詢功能目前資料有限，尚未支援即時查詢」
+- **禁止**：用 heredoc 或 inline python script 繞過 skill bin/ 直接呼叫 TDX API
+- 原因：agent runtime 會攔截 heredoc（exitCode 1, durationMs 0），且此行為屬於未授權的繞過機制
+
+**站名未收錄（resolver 回傳 None）時的處理：**
+- 誠實告知：「TDX 目前對此站名的資料對應有限」
+- **禁止**：用 heredoc 補查 TDX 原始 API
+- 正確做法：告知限制，詢問使用者是否要用其他站名或查詢方式
+
