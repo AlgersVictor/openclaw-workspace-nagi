@@ -124,6 +124,88 @@ class TestResolveCity:
         r = resolve_city("台北")
         assert r["details"]["label"] is not None
 
+    # 鄉鎮市區落點查詢
+    def test_district_full_name_resolves(self):
+        cases = [
+            ("潮州鎮", "PingtungCounty"),
+            ("羅東鎮", "YilanCounty"),
+            ("板橋區", "NewTaipei"),
+            ("埔里鎮", "NantouCounty"),
+            ("鹿港鎮", "ChanghuaCounty"),
+            ("臺東市", "TaitungCounty"),
+            ("台東市", "TaitungCounty"),
+            ("花蓮市", "HualienCounty"),
+            ("馬公市", "PenghuCounty"),
+            ("金城鎮", "KinmenCounty"),
+            ("南竿鄉", "LienchiangCounty"),
+            ("竹北市", "HsinchuCounty"),
+            ("斗六市", "YunlinCounty"),
+            ("太保市", "ChiayiCounty"),
+            ("竹崎鄉", "ChiayiCounty"),
+            ("三地門鄉", "PingtungCounty"),
+            ("那瑪夏區", "Kaohsiung"),
+            ("台西鄉", "YunlinCounty"),
+            ("臺西鄉", "YunlinCounty"),
+        ]
+        for name, expected_city in cases:
+            r = resolve_city(name)
+            assert r["status"] == "ok", f"failed: {name} → {r}"
+            assert r["normalized_value"] == expected_city, f"{name}: got {r['normalized_value']}"
+            assert r["details"].get("matched_by") == "district"
+            assert r["needs_clarification"] is False
+
+    def test_district_short_alias_resolves(self):
+        cases = [
+            ("潮州", "PingtungCounty"),
+            ("羅東", "YilanCounty"),
+            ("鹿港", "ChanghuaCounty"),
+            ("埔里", "NantouCounty"),
+            ("竹北", "HsinchuCounty"),
+            ("阿里山", "ChiayiCounty"),
+            ("東引", "LienchiangCounty"),
+            ("馬公", "PenghuCounty"),
+            ("恆春", "PingtungCounty"),
+            ("斗六", "YunlinCounty"),
+            ("虎尾", "YunlinCounty"),
+            ("豐原", "Taichung"),
+            ("岡山", "Kaohsiung"),
+            ("礁溪", "YilanCounty"),
+        ]
+        for name, expected_city in cases:
+            r = resolve_city(name)
+            assert r["status"] == "ok", f"failed: {name} → {r}"
+            assert r["normalized_value"] == expected_city, f"{name}: got {r['normalized_value']}"
+
+    def test_ambiguous_district_needs_clarification(self):
+        ambiguous = ["大安區", "東區", "南區", "北區", "西區", "中正區", "信義區", "中山區"]
+        for name in ambiguous:
+            r = resolve_city(name)
+            assert r["needs_clarification"] is True, f"{name} should be ambiguous"
+            assert r["details"]["reason"] == "ambiguous_district"
+            assert len(r["candidates"]) >= 2, f"{name}: expected candidates"
+
+    def test_ambiguous_district_candidates_content(self):
+        r = resolve_city("大安區")
+        assert "臺北市" in r["candidates"]
+        assert "臺中市" in r["candidates"]
+
+        r = resolve_city("東區")
+        assert len(r["candidates"]) == 4
+
+        r = resolve_city("中正區")
+        assert "臺北市" in r["candidates"]
+        assert "基隆市" in r["candidates"]
+
+    def test_city_aliases_still_take_priority(self):
+        # CITY_ALIASES 應優先於 DISTRICT_TO_CITY
+        r = resolve_city("台北")
+        assert r["normalized_value"] == "Taipei"
+        assert r["details"].get("matched_by") != "district"
+
+        r = resolve_city("屏東")
+        assert r["normalized_value"] == "PingtungCounty"
+        assert r["details"].get("matched_by") != "district"
+
 
 # ---------------------------------------------------------------------------
 # resolver_rail_system
