@@ -5,22 +5,33 @@ scope: TDX MQTT listener 群組動態管理
 
 inputs:
   action: enable | disable
-  group: taipei | taichung | chiayi | yunlin
+  group: taipei|keelung|taoyuan|hsinchu|miaoli|taichung|changhua|nantou|yunlin|chiayi|tainan|pingtung|yilan|hualien|taitung|penghu|kinmen|lienchiang
   config: 設定檔路徑（預設 ~/.openclaw/workspace/runtime/tdx/mqtt_groups.json）
 
-群組定義:
-  taipei:
-    - v2/Bus/Alert/City/Taipei      (台北公車)
-    - v2/Bus/Alert/City/NewTaipei   (新北公車)
-    - v2/Rail/Metro/Alert/TRTC      (台北捷運)
-  taichung:
-    - v2/Bus/Alert/City/Taichung    (台中公車)
-    - v2/Rail/Metro/Alert/TMRT      (台中捷運)
-  chiayi:
-    - v2/Bus/Alert/City/Chiayi      (嘉義市公車)
-    - v2/Bus/Alert/City/ChiayiCounty (嘉義縣公車)
-  yunlin:
-    - v2/Bus/Alert/City/YunlinCounty (雲林縣公車)
+群組定義（18組）:
+  # 北部
+  taipei:      台北公車 + 新北公車 + TRTC捷運 + 淡海輕軌
+  keelung:     基隆公車 + KLRT輕軌
+  taoyuan:     桃園公車 + TYMC捷運
+  hsinchu:     新竹市/縣公車
+  # 中部
+  miaoli:      苗栗縣公車
+  taichung:    台中公車 + TMRT捷運
+  changhua:    彰化縣公車
+  nantou:      南投縣公車
+  yunlin:      雲林縣公車
+  # 南部
+  chiayi:      嘉義市/縣公車
+  tainan:      台南公車
+  pingtung:    屏東縣公車
+  # 東部
+  yilan:       宜蘭縣公車
+  hualien:     花蓮縣公車
+  taitung:     台東縣公車
+  # 離島
+  penghu:      澎湖縣公車
+  kinmen:      金門縣公車
+  lienchiang:  連江縣公車（馬祖）
 
 workflow:
   1. 讀取 mqtt_groups.json（不存在則預設全 false）

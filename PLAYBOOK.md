@@ -119,17 +119,33 @@
      - km_range 解析失敗時（"未能解析"）：說明改以交流道關鍵字模糊比對
 
 6c. **TDX MQTT 通知群組切換** → 呼叫 `tdx-topic-toggle`
-   - 觸發關鍵字：「開啟XX」「關閉XX」（XX = 台北/台中/嘉義/雲林）
-   - 群組對應：
-     - 台北（taipei）  = 台北公車 + 新北公車 + 台北捷運（TRTC）
-     - 台中（taichung）= 台中公車 + 台中捷運（TMRT）
-     - 嘉義（chiayi）  = 嘉義市公車 + 嘉義縣公車
-     - 雲林（yunlin）  = 雲林縣公車
+   - 觸發關鍵字：「開啟XX」「關閉XX」（XX = 下表任一地名）
+   - 群組對應（18 組，預設全關）：
+     | 地名關鍵字 | group 參數 | 涵蓋 topics |
+     |---|---|---|
+     | 台北 | taipei | 台北/新北公車 + TRTC捷運 + 淡海輕軌 |
+     | 基隆 | keelung | 基隆公車 + KLRT輕軌 |
+     | 桃園 | taoyuan | 桃園公車 + TYMC捷運 |
+     | 新竹 | hsinchu | 新竹市/縣公車 |
+     | 苗栗 | miaoli | 苗栗縣公車 |
+     | 台中 | taichung | 台中公車 + TMRT捷運 |
+     | 彰化 | changhua | 彰化縣公車 |
+     | 南投 | nantou | 南投縣公車 |
+     | 雲林 | yunlin | 雲林縣公車 |
+     | 嘉義 | chiayi | 嘉義市/縣公車 |
+     | 台南 | tainan | 台南公車 |
+     | 屏東 | pingtung | 屏東縣公車 |
+     | 宜蘭 | yilan | 宜蘭縣公車 |
+     | 花蓮 | hualien | 花蓮縣公車 |
+     | 台東 | taitung | 台東縣公車 |
+     | 澎湖 | penghu | 澎湖縣公車 |
+     | 金門 | kinmen | 金門縣公車 |
+     | 馬祖/連江 | lienchiang | 連江縣公車 |
    - 開啟範例指令：
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-topic-toggle toggle --action enable --group taipei
    - 關閉範例指令：
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-topic-toggle toggle --action disable --group taipei
-   - 其他群組同理，--group taichung / chiayi / yunlin
+   - 其他群組同理，--group 帶對應 group 參數
    - 執行後自動重啟 tdx-mqtt-listener，約 2 秒生效
    - 查詢目前狀態：
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-topic-toggle status
