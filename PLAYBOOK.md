@@ -84,6 +84,12 @@
 1. **明確捷運查詢（台北捷運 / 高雄捷運 / 高雄輕軌）** → 呼叫 `tdx-metro-query`
    - 到站時間、班距、站間時間、轉乘資訊
    - 範例問句：「捷運美麗島站到站時間」「高雄輕軌班距」
+   - 範例指令：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query station_info --system KRTC --station-name 美麗島
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query liveboard --system TRTC --station-name 台北車站
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query s2s_travel_time --system KRTC --station-name 美麗島 --destination-station 左營
+   - `--system` 接受：TRTC（台北捷運）/ KRTC（高雄捷運）/ KLRT（高雄輕軌）或中文別名
+   - 缺 system 或 station-name 先澄清，不可猜測
 
 2. **有城市 + 公車路線** → 呼叫 `tdx-local-query`，sub_command = `bus_realtime`
    - 範例指令：
@@ -96,6 +102,13 @@
 4. **明確停車查詢** → 呼叫 `tdx-parking-query`
    - 停車場、停車位、附近停車
    - 以路外停車 (OffStreet) 為主；路邊停車資料有限
+   - 範例指令：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query offstreet --city 台北
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query nearby --city 高雄 --landmark 高雄車站
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query keyword_search --city 台北 --keyword 轉運站
+   - 必要參數：`--city`（城市名）
+   - `onstreet` 與 `spot` 端點為 mapped_only / not_prechecked，誠實告知資料有限
+   - 缺 city 先澄清，不可猜測
 
 5. **明確路況查詢** → 呼叫 `tdx-road-live`
    - 城市路況摘要、交通壅塞
@@ -196,8 +209,10 @@
   - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-local-query/bin/tdx-local-query ...`
   - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-maas-route/bin/tdx-maas-route ...`
   - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-freeway-query/bin/tdx-freeway-query --road <路名> --direction <北向|南向> --from <起點> --to <終點>`
-- 對於 tdx-metro-query、tdx-parking-query、tdx-road-live、tdx-road-event、tdx-tourism-info：
-  - 這五支 skill 為 Python 模組型，無 bin/ CLI 入口
+  - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query <sub_command> --system <TRTC|KRTC|KLRT> --station-name <站名>`
+  - `python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query <sub_command> --city <城市>`
+- 對於 tdx-road-live、tdx-road-event、tdx-tourism-info：
+  - 這三支 skill 為 Python 模組型，無 bin/ CLI 入口
   - 透過 OpenClaw skill 系統呼叫（由 skill resolver 自動 routing）
   - 不可自行編造不存在的 CLI 指令路徑
   - 若 skill 回傳 `needs_clarification` 或 `invalid_input`，照其指示澄清
@@ -236,15 +251,23 @@
 
 3. 捷運 / 輕軌查詢
    - 例：捷運美麗島站到站時間、高雄輕軌班距
-   - 優先呼叫 `tdx-metro-query`（透過 OpenClaw skill 系統）
+   - 優先使用：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query station_info --system KRTC --station-name 美麗島
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query liveboard --system TRTC --station-name 台北車站
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query s2s_travel_time --system KRTC --station-name 美麗島 --destination-station 左營
    - 典型問句路由：
-     - `台北捷運台北車站資訊` → `tdx-metro-query`
-     - `高雄輕軌哈瑪星到站時間` → `tdx-metro-query`
+     - `台北捷運台北車站資訊` → sub_command=station_info --system TRTC
+     - `高雄輕軌哈瑪星到站時間` → sub_command=liveboard --system KLRT
+   - 環境變數需由 `/home/amakumo/.openclaw/workspace/runtime/tdx/.env` 載入
 
 4. 停車場查詢
    - 例：台北哪裡還有停車位、附近停車場
-   - 優先呼叫 `tdx-parking-query`（透過 OpenClaw skill 系統）
-   - 以路外停車 (OffStreet) 為主
+   - 優先使用：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query offstreet --city 台北
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query nearby --city 高雄 --landmark 高雄車站
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-parking-query keyword_search --city 台北 --keyword 轉運站
+   - 以路外停車 (OffStreet) 為主；onstreet / spot 資料有限，誠實告知
+   - 環境變數需由 `/home/amakumo/.openclaw/workspace/runtime/tdx/.env` 載入
 
 5. 路況查詢
    - 例：台北現在哪裡塞車、高雄路況
