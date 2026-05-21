@@ -410,6 +410,7 @@ DISTRICT_TO_CITY: dict[str, str] = {
     "車城鄉": "PingtungCounty",
     "牡丹鄉": "PingtungCounty",
     "滿州鄉": "PingtungCounty",
+    "南灣": "PingtungCounty",      # 恆春鎮下的知名觀光地名（非行政區）
     # ── 臺東縣 ──────────────────────────────────────────────
     "臺東市": "TaitungCounty",
     "台東市": "TaitungCounty",
