@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -37,8 +38,9 @@ def main() -> None:
     args = parser.parse_args()
 
     # 城市路況 intent 必須透過 tdx-city-road-query wrapper，禁止直接呼叫
+    # TDX_WRAPPER=1 表示由 wrapper 內部呼叫，豁免 redirect guard
     _CITY_INTENTS = {"traffic_live_summary", "congestion_level", "traffic_news"}
-    if args.sub_command in _CITY_INTENTS:
+    if args.sub_command in _CITY_INTENTS and not os.environ.get("TDX_WRAPPER"):
         print(json.dumps({
             "status": "redirect",
             "use_instead": "python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query --city <城市>",

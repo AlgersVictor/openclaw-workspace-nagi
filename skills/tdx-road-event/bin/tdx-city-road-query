@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -25,7 +26,8 @@ _ROAD_LIVE  = _SKILLS / "tdx-road-live"  / "bin" / "tdx-road-live"
 
 
 def _run(cmd: list[str]) -> tuple[int, dict]:
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    env = {**os.environ, "TDX_WRAPPER": "1"}
+    r = subprocess.run(cmd, capture_output=True, text=True, env=env)
     raw = r.stdout.strip() or r.stderr.strip()
     try:
         return r.returncode, json.loads(raw)
