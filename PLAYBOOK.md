@@ -286,6 +286,7 @@
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query --city <城市> [--keyword <路段>] [--top <筆數>]
    - **禁止**直接分別呼叫 `tdx-road-live` + `tdx-road-event`（並行會觸發 TDX 429）
    - wrapper 內部序列：road-event 先 → exit 0 後再補 road-live；任一 exit 2 → 停止
+   - `tdx-road-live` / `tdx-road-event` 城市 intent 直接呼叫時會回傳 exit 3（redirect）→ 立即改用 wrapper，不重試原指令
    - 不可拿一般新聞冒充 TDX 路況資料
 
 6b. 國道指定路段查詢（起訖交流道）
@@ -397,7 +398,11 @@
 - 任一 TDX skill 回傳 `upstream_error`（含 429）後，禁止對相同 endpoint + city 組合繼續發送請求。
 - 直接回報：「[city] 路況端點目前暫時不可用，建議稍後再試。」
 - 不可再用不同參數組合（如 roadClass、limit）對同一 endpoint 重試。
-- **exit code 語義**：`tdx-road-live` 與 `tdx-freeway-query` 的 exit code 定義如下——exit 0 = 成功；exit 1 = 輸入錯誤或未知失敗；**exit 2 = 上游錯誤（upstream_error / rate_limited / auth_error），收到 exit 2 後立即停止，不重試**。
+- **exit code 語義**（所有 TDX skill bin 統一）：
+  - exit 0 = 成功
+  - exit 1 = 輸入錯誤或未知失敗
+  - exit 2 = 上游錯誤（upstream_error / rate_limited / auth_error）→ **立即停止，不重試**
+  - exit 3 = redirect → **改用 tdx-city-road-query wrapper**，收到後不可再直接呼叫 road-live / road-event 城市 intent
 
 **skill 回傳 `mapped_only` 或 `not_prechecked` 時的處理：**
 - 誠實告知：「此查詢功能目前資料有限，尚未支援即時查詢」

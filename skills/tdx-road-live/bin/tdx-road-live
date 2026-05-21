@@ -36,6 +36,16 @@ def main() -> None:
     parser.add_argument("--top", type=int, default=3, help="回傳筆數上限（預設 3）")
     args = parser.parse_args()
 
+    # 城市路況 intent 必須透過 tdx-city-road-query wrapper，禁止直接呼叫
+    _CITY_INTENTS = {"traffic_live_summary", "congestion_level", "traffic_news"}
+    if args.sub_command in _CITY_INTENTS:
+        print(json.dumps({
+            "status": "redirect",
+            "use_instead": "python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query --city <城市>",
+            "reason": "城市路況查詢必須透過 tdx-city-road-query wrapper（避免並行 429）",
+        }, ensure_ascii=False, indent=2))
+        sys.exit(3)  # exit 3 = redirect，改用 wrapper
+
     params = {
         "intent": args.sub_command,
         "city": args.city,
