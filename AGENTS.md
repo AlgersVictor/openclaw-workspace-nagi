@@ -104,11 +104,42 @@ python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-
 - 以路外停車（offstreet）為主；onstreet / spot 資料有限，誠實告知
 - **禁止使用 `$OPENCLAW_HOME` 或任何環境變數組出路徑；必須使用上方硬式絕對路徑**
 
+## TDX 城市道路 + 國道查詢（tdx-city-road-query + tdx-freeway-query）
+
+使用者詢問通勤路況、城市即時路況、國道路段速度時：
+
+### 城市道路（必須用 wrapper，禁止直接呼叫 road-live / road-event 城市 intent）
+
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query --city <城市> [--keyword <路段>] [--top <筆數>]
+```
+
+範例：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query --city 高雄 --keyword 三多路 --top 5
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query --city 台北
+```
+
+### 國道路段（起訖交流道）
+
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-freeway-query/bin/tdx-freeway-query --road <路名> --direction <北向|南向> --from <起點交流道> --to <終點交流道>
+```
+
+範例：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-freeway-query/bin/tdx-freeway-query --road 國道1號 --direction 北向 --from 中正交流道 --to 岡山交流道
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-freeway-query/bin/tdx-freeway-query --road 國道1號 --direction 南向 --from 岡山交流道 --to 中正交流道
+```
+
+- **城市路況一律走 `tdx-city-road-query`**；直接呼叫 road-live / road-event 城市 intent 會回 exit 3（redirect）
+- **禁止使用 `$OPENCLAW_HOME` 或任何環境變數組出路徑；必須使用上方硬式絕對路徑**
+
 ## 使用規則
 1. 台灣天氣查詢優先用 `cwa-weather`，不要用一般搜尋替代。
 2. 讀取已知網頁用 `web-reader`；搜尋探索用 `searxng-search`。
 3. 行事曆、日期、排程相關優先用 `calendar`。
-4. 使用 skill 前先讀其 SKILL.md，不要用猜的。
+4. TDX skill 路徑依本文各 section 硬式絕對路徑執行，不可用 SKILL.md 或環境變數猜路徑。
 5. 一律使用繁體中文（台灣用語）回覆。
 6. 「開啟XX」/「關閉XX」縣市指令 → 直接執行 tdx-topic-toggle，不詢問確認。
 7. TDX skill 路徑一律使用硬式絕對路徑，禁止用環境變數（$OPENCLAW_HOME 等）拼接。
