@@ -83,3 +83,12 @@ notes:
       事件新增/解除監測（/v1/Traffic/RoadEvent/LiveEvent/City/Kaohsiung）不受影響。
   - 與 tdx-mqtt-listener 共用同一個 DISCORD_WEBHOOK_URL
   - tdx-traffic-toggle skill 可動態控制縣市開關（Nagi 指令）
+  - 已知設計行為 — freeway stale state（2026-05-31 修正）：
+      freeway: false 時 freeway_events state 不更新，停用期間累積舊事件。
+      重新啟用後第一個 cycle 舊事件全進 resolved_ids → Discord 爆發。
+      修正：run_once() 在 freeway: false 時每 cycle 清空 freeway_events，
+      確保重新啟用時從乾淨 state 開始（commit 228ea71）。
+  - 已知設計行為 — dedup 跨 cycle 遺失（2026-05-31 修正）：
+      EventDedup.mark_sent() 只在記憶體，dedup.save() 原本未呼叫，
+      下次 cycle 重建 EventDedup 時 marks 消失 → TDX API 事件 flap 時重複推播。
+      修正：run_once() 結尾加 dedup.save()（commit 1c026ac）。
