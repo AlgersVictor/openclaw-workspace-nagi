@@ -6,13 +6,50 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import ssl
 import time
 import threading
+from datetime import datetime, timedelta, timezone
 from typing import Any
+
+_TZ_8 = timezone(timedelta(hours=8))
+_DEDUP_FILE = (
+    __import__("pathlib").Path.home()
+    / ".openclaw/workspace/runtime/tdx/mqtt_dedup_state.json"
+)
+_DEDUP_TTL = timedelta(hours=2)
+
+
+def _dedup_fingerprint(topic: str, payload_str: str) -> str:
+    raw = f"{topic}|{payload_str}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _dedup_load() -> dict[str, str]:
+    if not _DEDUP_FILE.exists():
+        return {}
+    try:
+        data = json.loads(_DEDUP_FILE.read_text(encoding="utf-8"))
+        cutoff = datetime.now(_TZ_8) - _DEDUP_TTL
+        return {
+            fp: ts
+            for fp, ts in data.get("fingerprints", {}).items()
+            if datetime.fromisoformat(ts) > cutoff
+        }
+    except Exception:
+        return {}
+
+
+def _dedup_save(seen: dict[str, str]) -> None:
+    _DEDUP_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _DEDUP_FILE.write_text(
+        json.dumps({"fingerprints": seen}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 import paho.mqtt.client as mqtt
 
@@ -77,10 +114,19 @@ def run(
             logger.error("MQTT 連線拒絕 rc=%s", rc)
 
     def on_message(client, userdata, msg):
+        payload_str = msg.payload.decode("utf-8", errors="replace")
         try:
-            payload = json.loads(msg.payload.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            payload = msg.payload.decode("utf-8", errors="replace")
+            payload = json.loads(payload_str)
+        except json.JSONDecodeError:
+            payload = payload_str
+
+        fp = _dedup_fingerprint(msg.topic, payload_str)
+        with seen_lock:
+            if fp in seen:
+                logger.debug("略過重複訊息：%s fp=%s", msg.topic, fp)
+                return
+            seen[fp] = datetime.now(_TZ_8).isoformat()
+            _dedup_save(seen)
 
         logger.info("收到訊息：%s", msg.topic)
         embed = format_embed(msg.topic, payload)
@@ -93,6 +139,8 @@ def run(
         logger.warning("MQTT 斷線，%s 秒後重連", reconnect_delay)
 
     logger.info("監聽器啟動，topics=%s dry_run=%s", topics, dry_run)
+    seen: dict[str, str] = _dedup_load()
+    seen_lock = threading.Lock()
 
     while True:
         mqttc = _make_client()
