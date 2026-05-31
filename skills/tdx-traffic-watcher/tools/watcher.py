@@ -89,6 +89,10 @@ def run_once(*, dry_run: bool = False) -> None:
     client = TdxClient(TdxAuthManager(TOKEN_URL))
     dedup = EventDedup(_DEDUP_FILE, ttl_hours=24.0)
 
+    # freeway 關閉時清除 stale state，避免重新啟用時爆發 resolved 通知
+    if not config.get("freeway") and state.get("freeway_events"):
+        state["freeway_events"] = {}
+
     # 國道事件（依路段篩選）
     if config.get("freeway"):
         sections_config = config.get("freeway_sections") or get_default_sections()
