@@ -17,6 +17,8 @@ for _p in [str(_SKILL_ROOT), str(_SHARED_CORE)]:
         sys.path.insert(0, _p)
 
 from road_live_formatter import (
+    format_cctv_summary,
+    format_congestion_summary,
     format_live_traffic_summary,
     format_mapped_only_summary,
     format_traffic_news_summary,
@@ -130,6 +132,16 @@ class TestFormatters:
         assert "台北市" in s
         assert "3" in s
 
+    def test_congestion_summary(self):
+        s = format_congestion_summary("台中市", 8)
+        assert "台中市" in s
+        assert "8" in s
+
+    def test_cctv_summary(self):
+        s = format_cctv_summary("高雄市", 15)
+        assert "高雄市" in s
+        assert "15" in s
+
     def test_mapped_only_summary(self):
         s = format_mapped_only_summary("cctv_info", "台南市")
         assert "cctv_info" in s
@@ -181,15 +193,31 @@ class TestExecuteNeedsClarification:
 
 
 class TestExecuteMappedOnly:
-    def test_non_prechecked_returns_mapped_only(self):
+    def test_unsupported_intent_returns_invalid_input(self):
+        result = road_live_query.execute({"intent": "no_such_road_live_intent"})
+        assert result["status"] == "invalid_input"
+        assert result["unavailable_reason"] == "unsupported_intent"
+
+
+class TestExecuteCongestionLevel:
+    def test_returns_congestion_items(self):
+        fake_data = {"CongestionLevels": [
+            {"SectionID": "S001", "CongestionLevel": 2, "CongestionLevelID": "B"},
+            {"SectionID": "S002", "CongestionLevel": 3, "CongestionLevelID": "C"},
+        ]}
+        mock_client = MagicMock()
+        mock_client.get.return_value = _fake_response(fake_data)
         with (
             patch.object(road_live_query, "resolve_city", return_value=_fake_city_result()),
             patch.object(road_live_query, "get_endpoint", return_value=_fake_endpoint_meta()),
+            patch.object(road_live_query, "build_query_options", return_value={}),
         ):
-            result = road_live_query.execute({"intent": "congestion_level", "city": "高雄市"})
+            result = road_live_query.execute({"intent": "congestion_level", "city": "高雄市"}, client=mock_client)
         assert result["status"] == "ok"
-        assert result["unavailable_reason"] == "not_prechecked_phase_2b"
-        assert result["items"] == []
+        assert len(result["items"]) == 2
+        assert result["items"][0]["section_id"] == "S001"
+        assert result["items"][0]["congestion_level"] == 2
+        assert "壅塞" in result["summary"]
 
 
 class TestExecuteTrafficNews:
@@ -242,6 +270,45 @@ class TestExecuteTrafficLiveSummary:
             )
         assert len(result["items"]) == 1
         assert "NORTH" in result["items"][0]["section_id"]
+
+
+class TestExecuteCctvInfo:
+    def test_returns_cctv_items(self):
+        fake_data = {"CCTVs": [
+            {"CCTVID": "C1", "RoadName": "中山路", "City": "Kaohsiung", "CCTVURL": "http://cctv1.example"},
+            {"CCTVID": "C2", "RoadName": "民族路", "City": "Kaohsiung", "CCTVURL": "http://cctv2.example"},
+        ]}
+        mock_client = MagicMock()
+        mock_client.get.return_value = _fake_response(fake_data)
+        with (
+            patch.object(road_live_query, "resolve_city", return_value=_fake_city_result()),
+            patch.object(road_live_query, "get_endpoint", return_value=_fake_endpoint_meta()),
+            patch.object(road_live_query, "build_query_options", return_value={}),
+        ):
+            result = road_live_query.execute({"intent": "cctv_info", "city": "高雄市"}, client=mock_client)
+        assert result["status"] == "ok"
+        assert len(result["items"]) == 2
+        assert result["items"][0]["cctv_id"] == "C1"
+        assert "監視器" in result["summary"]
+
+    def test_keyword_filter(self):
+        fake_data = {"CCTVs": [
+            {"CCTVID": "C1", "RoadName": "中山路", "City": "Kaohsiung", "CCTVURL": "http://x1"},
+            {"CCTVID": "C2", "RoadName": "民族路", "City": "Kaohsiung", "CCTVURL": "http://x2"},
+        ]}
+        mock_client = MagicMock()
+        mock_client.get.return_value = _fake_response(fake_data)
+        with (
+            patch.object(road_live_query, "resolve_city", return_value=_fake_city_result()),
+            patch.object(road_live_query, "get_endpoint", return_value=_fake_endpoint_meta()),
+            patch.object(road_live_query, "build_query_options", return_value={}),
+        ):
+            result = road_live_query.execute(
+                {"intent": "cctv_info", "city": "高雄市", "keyword": "中山"},
+                client=mock_client,
+            )
+        assert len(result["items"]) == 1
+        assert result["items"][0]["cctv_id"] == "C1"
 
 
 class TestExecuteErrors:

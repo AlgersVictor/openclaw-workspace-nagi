@@ -1,3 +1,5 @@
+@RTK.md
+
 # AGENTS.md - Nagi 工作指引
 
 ## 角色定位
@@ -27,6 +29,7 @@
 ## TDX 通知群組開關（重要，必須優先處理）
 
 使用者說「開啟XX」或「關閉XX」（XX = 台灣縣市名稱）時，**立即**執行以下指令，不要詢問確認：
+（⚠️ 若訊息含「交通推播」，走下方 TDX 交通推播開關，不走此區段）
 
 | 地名關鍵字 | group 參數 |
 |---|---|
@@ -41,6 +44,7 @@
 | 雲林 | yunlin |
 | 嘉義 | chiayi |
 | 台南 | tainan |
+| 高雄 | kaohsiung |
 | 屏東 | pingtung |
 | 宜蘭 | yilan |
 | 花蓮 | hualien |
@@ -65,6 +69,59 @@ python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-t
 執行後回覆格式：
 - 開啟成功：「✅ XX 通阻通知已開啟（涵蓋：公車/捷運/輕軌）」
 - 關閉成功：「🔕 XX 通阻通知已關閉」
+
+## TDX 交通推播開關（tdx-traffic-toggle）
+
+使用者說「開啟 XX 交通推播」「關閉 XX 交通推播」「查詢交通推播設定」時，直接執行：
+
+開啟：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle toggle --action enable --target <縣市名稱或freeway>
+```
+關閉：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle toggle --action disable --target <縣市名稱或freeway>
+```
+查詢：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle status
+```
+
+`--target` 支援中文：台北、新北、桃園、台中、台南、高雄、基隆、新竹市、新竹縣、
+嘉義市、嘉義縣、苗栗、彰化、南投、雲林、屏東、宜蘭、花蓮、台東、澎湖、金門、馬祖
+`--target` 也支援 freeway 或「國道」
+
+執行結果回覆格式：
+- 開啟成功：「✅ [縣市] 交通推播已開啟」
+- 關閉成功：「🔕 [縣市] 交通推播已關閉」
+- 查詢成功：列出目前啟用縣市清單
+- 失敗：「❌ [錯誤說明]」
+
+**禁止使用環境變數組出路徑；必須使用上方硬式絕對路徑**
+
+## 國道路段推播開關（tdx-traffic-toggle section）
+
+使用者說「開啟/關閉國道X號 XX 路段」「國道一號高雄到雲林 開啟」等時，直接執行：
+
+單路段（--name）：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle section --action enable --highway 1 --name 高雄
+```
+
+縣市範圍（--from --to，含兩端所有路段）：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle section --action enable --highway 1 --from 高雄 --to 雲林
+```
+
+路段狀態查詢：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle section --action status --highway 1
+```
+
+`--highway`：1（國道一號）、3（國道三號）、5（國道五號）
+`--name`/`--from`/`--to`：縣市中文（高雄、嘉義、屏東 等），嘉義/新北有多路段時全部一起開關
+
+**禁止使用環境變數組出路徑；必須使用上方硬式絕對路徑**
 
 ## TDX 捷運查詢（tdx-metro-query）
 
@@ -103,6 +160,29 @@ python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-parking-query/bin/tdx-
 - 必要參數：`--city`；缺城市先澄清
 - 以路外停車（offstreet）為主；onstreet / spot 資料有限，誠實告知
 - **禁止使用 `$OPENCLAW_HOME` 或任何環境變數組出路徑；必須使用上方硬式絕對路徑**
+
+## TDX 機場航班查詢（tdx-air-fids）
+
+使用者查詢機場出發/抵達班次時，直接執行：
+
+出發：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-air-fids/bin/tdx-air-fids departure --airport <代碼或中文名>
+```
+抵達：
+```
+python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-air-fids/bin/tdx-air-fids arrival --airport <代碼或中文名>
+```
+
+`--airport` 支援 IATA 代碼（KHH、TSA、TPE、TTT、KNH、MZG 等）或中文（高雄、松山、桃園、台東、金門、澎湖…）
+`--top` 預設 10，可指定（如 --top 5）
+
+回覆格式：
+- 列出每筆：航班號 | 目的地/起點 | 預定時間 | 實際時間 | 狀態（remark）
+- 無班次：「目前無出發/抵達班次資料」
+- 上游失敗：「TDX 機場資料暫時無法取得」
+
+**禁止使用環境變數組出路徑；必須使用上方硬式絕對路徑**
 
 ## TDX 城市道路 + 國道查詢（tdx-city-road-query + tdx-freeway-query）
 

@@ -16,7 +16,7 @@ for _p in [str(_SKILL_ROOT), str(_SHARED_CORE)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from road_event_formatter import format_live_event_summary, format_mapped_only_summary
+from road_event_formatter import format_city_history_event_summary, format_freeway_event_summary, format_highway_event_summary, format_live_event_summary, format_mapped_only_summary
 from road_event_mapper import (
     map_event_city_payload,
     map_freeway_payload,
@@ -114,6 +114,21 @@ class TestFormatters:
         assert "台南市" in s
         assert "4" in s
 
+    def test_highway_event_summary(self):
+        s = format_highway_event_summary(7)
+        assert "7" in s
+        assert "省道" in s
+
+    def test_freeway_event_summary(self):
+        s = format_freeway_event_summary(3)
+        assert "3" in s
+        assert "國道" in s
+
+    def test_city_history_event_summary(self):
+        s = format_city_history_event_summary("台北市", 12)
+        assert "台北市" in s
+        assert "12" in s
+
     def test_mapped_only_with_city(self):
         s = format_mapped_only_summary("road_event_freeway", "台北市")
         assert "road_event_freeway" in s
@@ -180,26 +195,12 @@ class TestExecuteNeedsClarification:
 
 
 class TestExecuteMappedOnly:
-    def test_freeway_returns_mapped_only(self):
-        with patch.object(road_event_query, "get_endpoint", return_value=_fake_endpoint_meta()):
-            result = road_event_query.execute({"intent": "road_event_freeway"})
-        assert result["status"] == "ok"
-        assert result["unavailable_reason"] == "not_prechecked_phase_2b"
-        assert result["normalized_city"] is None
-
-    def test_highway_returns_mapped_only(self):
-        with patch.object(road_event_query, "get_endpoint", return_value=_fake_endpoint_meta()):
-            result = road_event_query.execute({"intent": "road_event_highway"})
-        assert result["status"] == "ok"
-        assert result["unavailable_reason"] == "not_prechecked_phase_2b"
-
-    def test_city_history_returns_mapped_only(self):
-        with (
-            patch.object(road_event_query, "resolve_city", return_value=_fake_city_result()),
-            patch.object(road_event_query, "get_endpoint", return_value=_fake_endpoint_meta()),
-        ):
-            result = road_event_query.execute({"intent": "road_event_city_history", "city": "台南市"})
-        assert result["unavailable_reason"] == "not_prechecked_phase_2b"
+    def test_non_prechecked_returns_mapped_only(self):
+        # 唯一剩餘 mapped_only intent: 無（所有 road-event intent 均已啟用）
+        # 改測試 invalid_input 路徑
+        result = road_event_query.execute({"intent": "no_such_event_intent"})
+        assert result["status"] == "invalid_input"
+        assert result["unavailable_reason"] == "unsupported_intent"
 
 
 class TestExecuteLiveCity:
@@ -269,6 +270,63 @@ class TestExecuteLiveCity:
             )
         assert len(result["items"]) == 1
         assert result["items"][0]["event_id"] == "E1"
+
+
+class TestExecuteHighway:
+    def test_returns_highway_items(self):
+        fake_data = {"LiveEvents": [
+            {"EventID": "H1", "EventTitle": "省道事故", "Description": "封閉", "EventType": 3, "Location": None, "PublishTime": "2026-01-01"},
+        ]}
+        mock_client = MagicMock()
+        mock_client.get.return_value = _fake_response(fake_data)
+        with (
+            patch.object(road_event_query, "get_endpoint", return_value=_fake_endpoint_meta()),
+            patch.object(road_event_query, "build_query_options", return_value={}),
+        ):
+            result = road_event_query.execute({"intent": "road_event_highway"}, client=mock_client)
+        assert result["status"] == "ok"
+        assert result["normalized_city"] is None
+        assert len(result["items"]) == 1
+        assert result["items"][0]["event_id"] == "H1"
+        assert "省道" in result["summary"]
+
+
+class TestExecuteFreeway:
+    def test_returns_freeway_items(self):
+        fake_data = {"LiveEvents": [
+            {"EventID": "F1", "EventTitle": "國道事故", "Description": "封閉", "EventType": 4, "Location": None, "PublishTime": "2026-01-01"},
+        ]}
+        mock_client = MagicMock()
+        mock_client.get.return_value = _fake_response(fake_data)
+        with (
+            patch.object(road_event_query, "get_endpoint", return_value=_fake_endpoint_meta()),
+            patch.object(road_event_query, "build_query_options", return_value={}),
+        ):
+            result = road_event_query.execute({"intent": "road_event_freeway"}, client=mock_client)
+        assert result["status"] == "ok"
+        assert result["normalized_city"] is None
+        assert len(result["items"]) == 1
+        assert result["items"][0]["event_id"] == "F1"
+        assert "國道" in result["summary"]
+
+
+class TestExecuteCityHistory:
+    def test_returns_history_items(self):
+        fake_data = {"Events": [
+            {"EventID": "H1", "EventTitle": "歷史積水", "Description": "已修復"},
+        ]}
+        mock_client = MagicMock()
+        mock_client.get.return_value = _fake_response(fake_data)
+        with (
+            patch.object(road_event_query, "resolve_city", return_value=_fake_city_result()),
+            patch.object(road_event_query, "get_endpoint", return_value=_fake_endpoint_meta()),
+            patch.object(road_event_query, "build_query_options", return_value={}),
+        ):
+            result = road_event_query.execute({"intent": "road_event_city_history", "city": "台南市"}, client=mock_client)
+        assert result["status"] == "ok"
+        assert len(result["items"]) == 1
+        assert result["items"][0]["event_id"] == "H1"
+        assert "歷史" in result["summary"]
 
 
 class TestExecuteErrors:

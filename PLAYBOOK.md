@@ -90,6 +90,8 @@
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-metro-query/bin/tdx-metro-query s2s_travel_time --system KRTC --station-name 美麗島 --destination-station 左營
    - `--system` 接受：TRTC（台北捷運）/ KRTC（高雄捷運）/ KLRT（高雄輕軌）或中文別名
    - 缺 system 或 station-name 先澄清，不可猜測
+   - ⚠️ `transfer_stations`（轉乘站）**僅 KRTC 高雄捷運可用**；TRTC/KLRT 等 TDX 端回 400，
+     使用者問台北捷運轉乘時，直接說明「TDX 目前僅提供高雄捷運轉乘站資料」，不要硬跑指令
 
 2. **有城市 + 公車路線** → 呼叫 `tdx-local-query`，sub_command = `bus_realtime`
    - 範例指令：
@@ -169,6 +171,43 @@
    - 查詢目前狀態：
      python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-topic-toggle status
    - 回覆格式：「✅ 台北通阻通知已開啟（台北公車、新北公車、台北捷運）」或「🔕 台北通阻通知已關閉」
+   - ⚠️ 若訊息含「交通推播」關鍵字，改走 6d（tdx-traffic-toggle），不走本區段
+
+6d. **Discord 交通事件推播縣市開關** → 呼叫 `tdx-traffic-toggle`
+   - 觸發條件：訊息含「**交通推播**」關鍵字（區別 6c：6c 無此詞）
+   - 典型觸發：「開啟台北交通推播」「關閉高雄交通推播」「查詢交通推播設定」「國道交通推播開啟」
+   - 開啟指令：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle toggle --action enable --target <縣市名稱或freeway>
+   - 關閉指令：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle toggle --action disable --target <縣市名稱或freeway>
+   - 查詢狀態：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle status
+   - `--target` 支援中文（台北、新北、高雄…）或 freeway/國道
+   - 設定立即寫入 config，tdx-traffic-watcher service 下一輪 poll（5 分鐘）生效
+   - 回覆格式：「✅ 台北交通推播已開啟」「🔕 高雄交通推播已關閉」「❌ 未知縣市：XX」
+
+6d-ext. **國道路段推播開關** → 同呼叫 `tdx-traffic-toggle section`
+   - 觸發條件：訊息含「國道X號」+地名，且有「開啟/關閉/查詢」動詞
+   - highway 對應：一號/1→nfb1，三號/3→nfb3，五號/5→nfb5
+   - 單路段：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle section --action enable --highway 1 --name 高雄
+   - 縣市範圍（高雄到雲林 = 取兩縣市間所有路段）：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle section --action enable --highway 1 --from 高雄 --to 雲林
+   - 路段狀態：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle section --action status --highway 1
+   - 支援縣市：基隆/新北/臺北/桃園/新竹縣/新竹市/苗栗/臺中/彰化/雲林/嘉義縣/嘉義市/臺南/高雄（NFB1）；另加南投/屏東（NFB3）；宜蘭（NFB5）
+   - 嘉義/新北等同縣市多路段時，全部一起開關
+
+6e. **機場航班查詢 (FIDS)** → 呼叫 `tdx-air-fids`
+   - 觸發條件：訊息含「航班」「班機」「起飛」「降落」「FIDS」「幾點飛」，且有機場地名
+   - 支援機場（16 個）：TSA 松山、TPE 桃園、KHH 高雄、RMQ 台中、TNN 台南、HUN 花蓮、TTT 台東、KNH 金門、MZG 澎湖、CYI 嘉義、GNI 綠島、KYD 蘭嶼、LZN 馬祖南竿、MFK 馬祖北竿、CMJ 七美、WOT 望安
+   - 出發班次指令：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-air-fids/bin/tdx-air-fids departure --airport KHH
+   - 抵達班次指令：
+     python3 /home/amakumo/.openclaw/workspace-nagi/skills/tdx-air-fids/bin/tdx-air-fids arrival --airport 高雄 --top 5
+   - `--airport` 支援中文（高雄、松山、桃園…）或 IATA 代碼
+   - 缺機場資訊時先澄清，不猜
+   - 回覆格式：「KHH 機場出發班次：共 X 筆」，逐筆列出 航班號 | 目的地 | 預定時間 | 實際時間 | 狀態
 
 7. **明確觀光 / 景點 / 餐廳查詢** → 呼叫 `tdx-tourism-info`
    - 景點資訊、餐廳查詢

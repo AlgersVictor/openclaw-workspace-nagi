@@ -25,6 +25,12 @@ from tourism_mapper import (
     map_hotel_payload,
     map_restaurant_payload,
     map_scenic_spot_payload,
+    map_attraction_payload_v21,
+    map_cycling_route_payload_v21,
+    map_event_payload_v21,
+    map_hotel_payload_v21,
+    map_restaurant_payload_v21,
+    map_trail_payload_v21,
 )
 from geocode_fallback import (
     is_geocode_fallback_enabled,
@@ -172,6 +178,86 @@ class TestGeocodeFallback:
 
 
 # ---------------------------------------------------------------------------
+# V2.1 Trail / CyclingRoute mappers
+# ---------------------------------------------------------------------------
+
+def _trail_node(trail_id="T001", name="太魯閣步道", length=2.3, height=150):
+    pa = {"City": "花蓮縣", "Town": "秀林鄉", "StreetAddress": "花蓮縣秀林鄉"}
+    return {
+        "TrailID": trail_id,
+        "TrailName": name,
+        "Description": "步道說明",
+        "PostalAddress": pa,
+        "Telephones": [{"Tel": "03-8621100"}],
+        "Images": [{"URL": "http://img.jpg", "Description": "步道"}],
+        "TrailLength": length,
+        "TrailHeight": height,
+        "BestVisitMonths": "3-5月、9-11月",
+        "IsCircle": 0,
+        "VisitDuration": 120,
+        "ServiceTimeInfo": "全天開放",
+        "FeeInfo": "免費",
+        "ParkingInfo": "停車場在入口",
+    }
+
+
+def _cycling_node(route_id="CR001", name="日月潭環湖自行車道", length=33.0):
+    pa = {"City": "南投縣", "Town": "魚池鄉", "StreetAddress": "南投縣魚池鄉"}
+    return {
+        "CyclingRouteID": route_id,
+        "CyclingRouteName": name,
+        "Description": "自行車路線說明",
+        "PostalAddress": pa,
+        "Telephones": [],
+        "Images": [{"URL": "http://bike.jpg", "Description": "路線"}],
+        "TrailLength": length,
+        "ServiceTimeInfo": "全天",
+        "FeeInfo": "免費",
+        "ParkingInfo": "日月潭遊客中心停車場",
+    }
+
+
+class TestMapTrailV21:
+    def test_extracts_fields(self):
+        data = {"value": [_trail_node()]}
+        items = map_trail_payload_v21(data)
+        assert len(items) == 1
+        item = items[0]
+        assert item["item_id"] == "T001"
+        assert item["name"] == "太魯閣步道"
+        assert item["trail_length_km"] == 2.3
+        assert item["trail_height_m"] == 150
+        assert item["best_visit_months"] == "3-5月、9-11月"
+        assert item["is_circle"] == 0
+        assert item["visit_duration_min"] == 120
+        assert item["fee_info"] == "免費"
+        assert item["city"] == "花蓮縣"
+
+    def test_empty_value(self):
+        assert map_trail_payload_v21({"value": []}) == []
+
+    def test_list_input(self):
+        items = map_trail_payload_v21([_trail_node("T002", "步道B", 1.0, 50)])
+        assert items[0]["name"] == "步道B"
+
+
+class TestMapCyclingRouteV21:
+    def test_extracts_fields(self):
+        data = {"value": [_cycling_node()]}
+        items = map_cycling_route_payload_v21(data)
+        assert len(items) == 1
+        item = items[0]
+        assert item["item_id"] == "CR001"
+        assert item["name"] == "日月潭環湖自行車道"
+        assert item["trail_length_km"] == 33.0
+        assert item["fee_info"] == "免費"
+        assert item["city"] == "南投縣"
+
+    def test_empty_value(self):
+        assert map_cycling_route_payload_v21({"value": []}) == []
+
+
+# ---------------------------------------------------------------------------
 # execute() helpers
 # ---------------------------------------------------------------------------
 
@@ -193,7 +279,8 @@ def _apply_std_patches(stack: ExitStack, city_result=None) -> None:
     stack.enter_context(patch.object(tourism_query, "build_query_options", return_value={}))
     stack.enter_context(patch.object(tourism_query, "load_tourism_aliases", return_value=[]))
     stack.enter_context(patch.object(tourism_query, "resolve_geocode_fallback", return_value={"status": "disabled"}))
-    stack.enter_context(patch.object(tourism_query, "_load_runtime_config", return_value={}))
+    # api_version: v10 確保舊測試繼續以 V1.0 JSON 路徑執行
+    stack.enter_context(patch.object(tourism_query, "_load_runtime_config", return_value={"api_version": "v10"}))
 
 
 # ---------------------------------------------------------------------------
@@ -310,3 +397,176 @@ class TestExecuteErrors:
             _apply_std_patches(stack)
             result = tourism_query.execute({"intent": "scenic_spot_city", "city": "台南市"}, client=mock_client)
         assert result["status"] == "upstream_error"
+
+
+# ---------------------------------------------------------------------------
+# V2.1 JSON mapper tests（API server: tdx.transportdata.tw/api/tourism）
+# ---------------------------------------------------------------------------
+
+_ATTRACTION_JSON = {"value": [{"AttractionID": "A001", "AttractionName": "旗津海岸公園",
+    "Description": "高雄著名景點",
+    "PostalAddress": {"City": "高雄市", "Town": "旗津區", "ZipCode": "805", "StreetAddress": "旗津三路"},
+    "Telephones": [{"Tel": "07-5551234"}],
+    "Images": [{"URL": "http://ex.com/img.jpg", "Description": "海岸"}],
+    "PositionLat": 22.616, "PositionLon": 120.270,
+    "AttractionClasses": ["自然景觀"], "WebsiteUrl": None, "Remarks": None}]}
+
+_RESTAURANT_JSON = {"value": [{"RestaurantID": "R001", "RestaurantName": "度小月",
+    "Description": "擔仔麵老店",
+    "PostalAddress": {"City": "台南市", "Town": "中西區", "ZipCode": "700", "StreetAddress": "中正路"},
+    "Telephones": [{"Tel": "06-2231234"}], "Images": [],
+    "PositionLat": 22.99, "PositionLon": 120.20,
+    "CuisineClasses": [], "WebsiteUrl": None, "Remarks": None}]}
+
+_HOTEL_JSON = {"value": [{"HotelID": "H001", "HotelName": "高雄漢來大飯店",
+    "Description": "五星旅宿",
+    "PostalAddress": {"City": "高雄市", "Town": "前金區", "ZipCode": "801", "StreetAddress": "成功一路"},
+    "Telephones": [{"Tel": "07-2161766"}], "Images": [],
+    "HotelStars": 5, "PositionLat": 22.63, "PositionLon": 120.30,
+    "HotelClasses": [], "WebsiteUrl": None, "Remarks": None}]}
+
+_EVENT_JSON = {"value": [{"EventID": "E001", "EventName": "台南燈節",
+    "Description": "元宵燈節活動",
+    "PostalAddress": {"City": "台南市", "Town": "中西區", "ZipCode": "700", "StreetAddress": "府前路"},
+    "Telephones": [{"Tel": "06-2981234"}], "Images": [],
+    "PositionLat": 23.00, "PositionLon": 120.20,
+    "EventClasses": [], "StartDateTime": "2026-02-12", "EndDateTime": "2026-02-16",
+    "WebsiteUrl": None, "Remarks": None}]}
+
+
+class TestMapAttractionV21:
+    def test_parses_fields(self):
+        items = map_attraction_payload_v21(_ATTRACTION_JSON)
+        assert len(items) == 1
+        item = items[0]
+        assert item["item_id"] == "A001"
+        assert item["name"] == "旗津海岸公園"
+        assert item["city"] == "高雄市"
+        assert item["town"] == "旗津區"
+        assert item["phone"] == "07-5551234"
+        assert item["latitude"] == 22.616
+        assert item["longitude"] == 120.270
+        assert len(item["pictures"]) == 1
+        assert item["pictures"][0]["url"] == "http://ex.com/img.jpg"
+
+    def test_empty_value_list(self):
+        items = map_attraction_payload_v21({"value": []})
+        assert items == []
+
+    def test_non_list_returns_empty(self):
+        items = map_attraction_payload_v21(None)
+        assert items == []
+
+
+class TestMapRestaurantV21:
+    def test_parses_fields(self):
+        items = map_restaurant_payload_v21(_RESTAURANT_JSON)
+        assert len(items) == 1
+        assert items[0]["item_id"] == "R001"
+        assert items[0]["name"] == "度小月"
+        assert items[0]["city"] == "台南市"
+        assert items[0]["phone"] == "06-2231234"
+
+
+class TestMapHotelV21:
+    def test_parses_fields(self):
+        items = map_hotel_payload_v21(_HOTEL_JSON)
+        assert len(items) == 1
+        assert items[0]["item_id"] == "H001"
+        assert items[0]["name"] == "高雄漢來大飯店"
+        assert items[0]["hotel_stars"] == 5
+
+    def test_hotel_stars_missing(self):
+        data = {"value": [{"HotelID": "H002", "HotelName": "無星級", "PostalAddress": {},
+                           "Telephones": [], "Images": [], "HotelClasses": [],
+                           "WebsiteUrl": None, "Remarks": None}]}
+        items = map_hotel_payload_v21(data)
+        assert items[0]["hotel_stars"] is None
+
+
+class TestMapEventV21:
+    def test_parses_fields(self):
+        items = map_event_payload_v21(_EVENT_JSON)
+        assert len(items) == 1
+        assert items[0]["item_id"] == "E001"
+        assert items[0]["name"] == "台南燈節"
+        assert items[0]["city"] == "台南市"
+        assert items[0]["start_datetime"] == "2026-02-12"
+
+
+# ---------------------------------------------------------------------------
+# V2.1 execute() integration tests
+# ---------------------------------------------------------------------------
+
+def _v21_endpoint_meta():
+    return {
+        "base_url": "https://tdx.transportdata.tw/api/tourism/service/odata/V2",
+        "path": "/Tourism/Attraction",
+        "validation_state": "prechecked",
+    }
+
+
+def _apply_v21_patches(stack: ExitStack, city_result=None) -> None:
+    stack.enter_context(patch.object(tourism_query, "resolve_city", return_value=city_result or _city_ok()))
+    stack.enter_context(patch.object(tourism_query, "get_endpoint", return_value=_v21_endpoint_meta()))
+    stack.enter_context(patch.object(tourism_query, "build_query_options", return_value={"$filter": "PostalAddress/City eq '台南市'", "$format": "JSON"}))
+    stack.enter_context(patch.object(tourism_query, "load_tourism_aliases", return_value=[]))
+    stack.enter_context(patch.object(tourism_query, "resolve_geocode_fallback", return_value={"status": "disabled"}))
+    stack.enter_context(patch.object(tourism_query, "_load_runtime_config", return_value={"api_version": "v21"}))
+
+
+class TestExecuteV21ScenicSpot:
+    def test_returns_items_from_json(self):
+        mock_client = MagicMock()
+        mock_client.get.return_value = SimpleNamespace(data=_ATTRACTION_JSON, url="https://tdx.transportdata.tw/api/tourism/service/odata/V2/Tourism/Attraction")
+        with ExitStack() as stack:
+            _apply_v21_patches(stack)
+            result = tourism_query.execute({"intent": "scenic_spot_city", "city": "高雄市"}, client=mock_client)
+        assert result["status"] == "ok"
+        assert len(result["items"]) == 1
+        assert result["items"][0]["name"] == "旗津海岸公園"
+
+    def test_accept_header_is_json_odata(self):
+        mock_client = MagicMock()
+        mock_client.get.return_value = SimpleNamespace(data=_ATTRACTION_JSON, url="https://tdx.transportdata.tw/api/tourism/service/odata/V2/Tourism/Attraction")
+        with ExitStack() as stack:
+            _apply_v21_patches(stack)
+            tourism_query.execute({"intent": "scenic_spot_city", "city": "高雄市"}, client=mock_client)
+        _, kwargs = mock_client.get.call_args
+        assert kwargs.get("accept") == "application/json;odata.metadata=none"
+
+
+class TestExecuteV21HotelAndEvent:
+    def test_hotel_city_v21_returns_items(self):
+        mock_client = MagicMock()
+        mock_client.get.return_value = SimpleNamespace(data=_HOTEL_JSON, url="https://tdx.transportdata.tw/api/tourism/service/odata/V2/Tourism/Hotel")
+        with ExitStack() as stack:
+            _apply_v21_patches(stack)
+            stack.enter_context(patch.object(tourism_query, "get_endpoint",
+                return_value={"base_url": "https://tdx.transportdata.tw/api/tourism/service/odata/V2",
+                              "path": "/Tourism/Hotel", "validation_state": "prechecked"}))
+            result = tourism_query.execute({"intent": "hotel_city", "city": "高雄市"}, client=mock_client)
+        assert result["status"] == "ok"
+        assert result["items"][0]["name"] == "高雄漢來大飯店"
+
+    def test_activity_city_v21_returns_items(self):
+        mock_client = MagicMock()
+        mock_client.get.return_value = SimpleNamespace(data=_EVENT_JSON, url="https://tdx.transportdata.tw/api/tourism/service/odata/V2/Tourism/Event")
+        with ExitStack() as stack:
+            _apply_v21_patches(stack)
+            stack.enter_context(patch.object(tourism_query, "get_endpoint",
+                return_value={"base_url": "https://tdx.transportdata.tw/api/tourism/service/odata/V2",
+                              "path": "/Tourism/Event", "validation_state": "prechecked"}))
+            result = tourism_query.execute({"intent": "activity_city", "city": "台南市"}, client=mock_client)
+        assert result["status"] == "ok"
+        assert result["items"][0]["name"] == "台南燈節"
+
+
+class TestCityODataFilter:
+    def test_v21_filter_format(self):
+        """確認 V2.1 城市 $filter 字串格式正確（PostalAddress/City）。"""
+        from query_option_builder import build_query_options
+        opts = build_query_options(top=5, filter_expr="PostalAddress/City eq 'Kaohsiung'")
+        assert opts["$filter"] == "PostalAddress/City eq 'Kaohsiung'"
+        assert opts["$format"] == "JSON"
+        assert opts["$top"] == "5"

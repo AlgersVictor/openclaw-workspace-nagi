@@ -17,7 +17,7 @@ from resolver_city import resolve_city
 from tdx_auth import TdxAuthError, TdxAuthManager
 from tdx_client import TdxClient, TdxClientError
 
-from road_live_formatter import format_live_traffic_summary, format_mapped_only_summary, format_traffic_news_summary
+from road_live_formatter import format_cctv_summary, format_congestion_summary, format_live_traffic_summary, format_mapped_only_summary, format_traffic_news_summary
 from road_live_mapper import (
     map_cctv_payload,
     map_congestion_payload,
@@ -32,7 +32,7 @@ INTENT_TO_ENDPOINT = {
     "traffic_news": "road_live_news_city",
     "cctv_info": "road_cctv_city",
 }
-PRECHECKED_INTENTS = {"traffic_live_summary", "traffic_news"}
+PRECHECKED_INTENTS = {"traffic_live_summary", "traffic_news", "congestion_level", "cctv_info"}
 
 
 def _build_output(
@@ -157,6 +157,15 @@ def execute(params: dict[str, Any], client: TdxClient | None = None) -> dict[str
     if intent == "traffic_news":
         items = map_traffic_news_payload(response.data)
         summary = format_traffic_news_summary(city_label, len(items))
+    elif intent == "congestion_level":
+        items = map_congestion_payload(response.data)
+        summary = format_congestion_summary(city_label, len(items))
+    elif intent == "cctv_info":
+        items = map_cctv_payload(response.data)
+        if params.get("keyword"):
+            kw = str(params["keyword"])
+            items = [i for i in items if kw in str(i["road_name"]) or kw in str(i["city"])]
+        summary = format_cctv_summary(city_label, len(items))
     else:
         items = map_live_traffic_payload(response.data)
         if params.get("keyword"):

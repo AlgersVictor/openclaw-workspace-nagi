@@ -19,6 +19,7 @@ from parking_formatter import (
     format_keyword_filtered_summary,
     format_mapped_only_summary,
     format_offstreet_availability_summary,
+    format_onstreet_segment_summary,
 )
 from parking_mapper import (
     map_offstreet_availability_payload,
@@ -139,6 +140,14 @@ class TestFormatters:
         s = format_keyword_filtered_summary("台北市", "台北車站", 7, "offstreet_availability_city")
         assert "台北車站" in s and "7" in s
 
+    def test_onstreet_segment_summary(self):
+        s = format_onstreet_segment_summary("台北市", 6)
+        assert "台北市" in s and "6" in s
+
+    def test_onstreet_segment_summary_with_keyword(self):
+        s = format_onstreet_segment_summary("台北市", 3, keyword="中正")
+        assert "中正" in s
+
     def test_mapped_only_summary(self):
         s = format_mapped_only_summary("onstreet_segment_availability_city", "台北市", "mapped_only")
         assert "mapped_only" in s
@@ -193,15 +202,6 @@ class TestExecuteNeedsClarification:
 
 
 class TestExecuteMappedOnly:
-    def test_onstreet_segment_mapped_only(self):
-        with (
-            patch.object(parking_query, "resolve_city", return_value=_city_ok()),
-            patch.object(parking_query, "get_endpoint", return_value=_endpoint_meta("mapped_only")),
-        ):
-            result = parking_query.execute({"intent": "onstreet_segment_availability_city", "city": "台南市"})
-        assert result["status"] == "ok"
-        assert "phase_2d" in result["unavailable_reason"]
-
     def test_offstreet_spot_mapped_only(self):
         with (
             patch.object(parking_query, "resolve_city", return_value=_city_ok()),
@@ -286,6 +286,43 @@ class TestExecuteKeywordSearch:
             }, client=mock_client)
         assert result["status"] == "ok"
         assert len(result["items"]) == 1
+
+
+class TestExecuteOnstreetSegment:
+    def _fake_data(self):
+        return {"ParkingSegmentAvailabilities": [
+            {"ParkingSegmentID": "S001", "RoadName": "中正路", "AvailableSpaces": 5, "ServiceStatus": 1, "DataCollectTime": "2026-01-01"},
+            {"ParkingSegmentID": "S002", "RoadName": "民族路", "AvailableSpaces": 0, "ServiceStatus": 1, "DataCollectTime": "2026-01-01"},
+        ]}
+
+    def test_returns_items(self):
+        mock_client = MagicMock()
+        mock_client.get.return_value = _fake_response(self._fake_data())
+        with (
+            patch.object(parking_query, "resolve_city", return_value=_city_ok()),
+            patch.object(parking_query, "get_endpoint", return_value=_endpoint_meta()),
+            patch.object(parking_query, "build_query_options", return_value={}),
+        ):
+            result = parking_query.execute({"intent": "onstreet_segment_availability_city", "city": "台南市"}, client=mock_client)
+        assert result["status"] == "ok"
+        assert len(result["items"]) == 2
+        assert result["items"][0]["segment_id"] == "S001"
+        assert "路邊" in result["summary"]
+
+    def test_keyword_filter(self):
+        mock_client = MagicMock()
+        mock_client.get.return_value = _fake_response(self._fake_data())
+        with (
+            patch.object(parking_query, "resolve_city", return_value=_city_ok()),
+            patch.object(parking_query, "get_endpoint", return_value=_endpoint_meta()),
+            patch.object(parking_query, "build_query_options", return_value={}),
+        ):
+            result = parking_query.execute(
+                {"intent": "onstreet_segment_availability_city", "city": "台南市", "keyword": "中正"},
+                client=mock_client,
+            )
+        assert len(result["items"]) == 1
+        assert result["items"][0]["road_name"] == "中正路"
 
 
 class TestExecuteErrors:

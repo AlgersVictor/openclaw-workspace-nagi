@@ -52,6 +52,10 @@ GROUPS: dict[str, list[str]] = {
     "tainan": [
         "v2/Bus/Alert/City/Tainan",
     ],
+    "kaohsiung": [
+        "v2/Bus/Alert/City/Kaohsiung",
+        "v2/Rail/Metro/Alert/KRTC",    # 高雄捷運
+    ],
     "pingtung": [
         "v2/Bus/Alert/City/PingtungCounty",
     ],

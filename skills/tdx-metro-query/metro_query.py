@@ -20,23 +20,33 @@ from tdx_auth import TdxAuthError, TdxAuthManager
 from tdx_client import TdxClient, TdxClientError
 
 from metro_formatter import (
+    format_frequency_summary,
     format_liveboard_summary,
-    format_mapped_only_summary,
+    format_route_summary,
+    format_s2s_summary,
     format_station_summary,
+    format_station_timetable_summary,
+    format_transfer_summary,
 )
-from metro_mapper import map_liveboard_payload, map_station_payload
+from metro_mapper import (
+    map_frequency_payload,
+    map_liveboard_payload,
+    map_route_payload,
+    map_s2s_travel_time_payload,
+    map_station_payload,
+    map_station_timetable_payload,
+    map_transfer_station_payload,
+)
 
 TOKEN_URL = "https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token"
-MAPPED_ONLY_INTENTS = {
+LIVE_INTENTS = {
+    "station_info": "metro_station",
+    "liveboard": "metro_liveboard",
     "frequency": "metro_frequency",
     "s2s_travel_time": "metro_s2s_travel_time",
     "route_info": "metro_route",
     "station_timetable": "metro_station_timetable",
     "transfer_stations": "metro_transfer_stations",
-}
-LIVE_INTENTS = {
-    "station_info": "metro_station",
-    "liveboard": "metro_liveboard",
 }
 
 
@@ -139,11 +149,11 @@ def execute(params: dict[str, Any], client: TdxClient | None = None) -> dict[str
     rail_system = str(rail_result["normalized_value"])
     normalized_station = station_result.get("normalized_value")
 
-    if intent in {"station_info", "liveboard", "frequency", "route_info", "station_timetable", "transfer_stations"}:
+    if intent in {"station_info", "liveboard", "station_timetable"}:
         if station_result["needs_clarification"]:
             reason = station_result["details"]["reason"]
-            # 站名在 resolver 未收錄時（unknown_station_alias），liveboard/station_info 改用 raw 站名過濾
-            if reason == "unknown_station_alias" and intent in LIVE_INTENTS:
+            # 站名在 resolver 未收錄時（unknown_station_alias），改用 raw 站名過濾
+            if reason == "unknown_station_alias":
                 normalized_station = params.get("station_name", "").strip()
             else:
                 return _build_output(
@@ -158,25 +168,6 @@ def execute(params: dict[str, Any], client: TdxClient | None = None) -> dict[str
                     needs_clarification=True,
                     unavailable_reason=reason,
                 )
-
-    if intent == "s2s_travel_time":
-        if station_result["needs_clarification"] or not params.get("destination_station"):
-            return _build_output(
-                status="needs_clarification",
-                intent=intent,
-                rail_system=rail_system,
-                normalized_station=normalized_station,
-                endpoint="",
-                validation_state="mapped_only",
-                summary="站間時間查詢需要起點與終點站名。",
-                items=[],
-                needs_clarification=True,
-                unavailable_reason="destination_station_required",
-            )
-        return _mapped_only_response(intent, rail_system, normalized_station)
-
-    if intent in MAPPED_ONLY_INTENTS:
-        return _mapped_only_response(intent, rail_system, normalized_station)
 
     if intent not in LIVE_INTENTS:
         return _build_output(
@@ -194,7 +185,7 @@ def execute(params: dict[str, Any], client: TdxClient | None = None) -> dict[str
     endpoint_key = LIVE_INTENTS[intent]
     endpoint_meta = get_endpoint(endpoint_key)
     endpoint_url = _build_endpoint_url(endpoint_meta, rail_system)
-    top = 200 if intent == "station_info" else 50
+    top = 200 if intent in {"station_info", "station_timetable"} else 50
     query_options = build_query_options(top=top, fmt="JSON")
 
     if client is None:  # pragma: no cover - tests inject fake client
@@ -233,16 +224,97 @@ def execute(params: dict[str, Any], client: TdxClient | None = None) -> dict[str
             items=items,
         )
 
+    if intent == "frequency":
+        items = map_frequency_payload(payload)
+        summary = format_frequency_summary(rail_system, len(items))
+        return _build_output(
+            status="ok",
+            intent=intent,
+            rail_system=rail_system,
+            normalized_station=normalized_station,
+            endpoint=response.url,
+            validation_state=endpoint_meta["validation_state"],
+            summary=summary,
+            items=items,
+        )
+
+    if intent == "s2s_travel_time":
+        items = map_s2s_travel_time_payload(payload)
+        dest = params.get("destination_station")
+        if dest:
+            items = [i for i in items if dest in str(i["to_station_id"])]
+        summary = format_s2s_summary(rail_system, len(items))
+        return _build_output(
+            status="ok",
+            intent=intent,
+            rail_system=rail_system,
+            normalized_station=normalized_station,
+            endpoint=response.url,
+            validation_state=endpoint_meta["validation_state"],
+            summary=summary,
+            items=items,
+        )
+
+    if intent == "route_info":
+        items = map_route_payload(payload)
+        summary = format_route_summary(rail_system, len(items))
+        return _build_output(
+            status="ok",
+            intent=intent,
+            rail_system=rail_system,
+            normalized_station=normalized_station,
+            endpoint=response.url,
+            validation_state=endpoint_meta["validation_state"],
+            summary=summary,
+            items=items,
+        )
+
+    if intent == "station_timetable":
+        items = [
+            item for item in map_station_timetable_payload(payload)
+            if _station_name_matches(item["station_name"], normalized_station)
+        ]
+        summary = format_station_timetable_summary(rail_system, normalized_station, len(items))
+        return _build_output(
+            status="ok",
+            intent=intent,
+            rail_system=rail_system,
+            normalized_station=normalized_station,
+            endpoint=response.url,
+            validation_state=endpoint_meta["validation_state"],
+            summary=summary,
+            items=items,
+        )
+
+    if intent == "transfer_stations":
+        items = map_transfer_station_payload(payload)
+        summary = format_transfer_summary(rail_system, len(items))
+        return _build_output(
+            status="ok",
+            intent=intent,
+            rail_system=rail_system,
+            normalized_station=normalized_station,
+            endpoint=response.url,
+            validation_state=endpoint_meta["validation_state"],
+            summary=summary,
+            items=items,
+        )
+
     items = [
         item for item in map_liveboard_payload(payload)
         if _station_name_matches(item["station_name"], normalized_station)
     ]
     if not items:
-        fallback = _mapped_only_response("frequency", rail_system, normalized_station)
-        fallback["intent"] = "frequency"
-        fallback["summary"] = f"{normalized_station} 目前沒有即時看板資料，已降級為班距骨架。"
-        fallback["status"] = "ok"
-        return fallback
+        return _build_output(
+            status="ok",
+            intent=intent,
+            rail_system=rail_system,
+            normalized_station=normalized_station,
+            endpoint=response.url,
+            validation_state=endpoint_meta["validation_state"],
+            summary=f"{normalized_station} 目前沒有即時看板資料。",
+            items=[],
+        )
 
     summary = format_liveboard_summary(rail_system, normalized_station, len(items))
     return _build_output(
@@ -254,21 +326,4 @@ def execute(params: dict[str, Any], client: TdxClient | None = None) -> dict[str
         validation_state=endpoint_meta["validation_state"],
         summary=summary,
         items=items,
-    )
-
-
-def _mapped_only_response(intent: str, rail_system: str, normalized_station: str | None) -> dict[str, Any]:
-    endpoint_key = MAPPED_ONLY_INTENTS[intent]
-    endpoint_meta = get_endpoint(endpoint_key)
-    endpoint_url = _build_endpoint_url(endpoint_meta, rail_system)
-    return _build_output(
-        status="ok",
-        intent=intent,
-        rail_system=rail_system,
-        normalized_station=normalized_station,
-        endpoint=endpoint_url,
-        validation_state=endpoint_meta["validation_state"],
-        summary=format_mapped_only_summary(intent, rail_system, normalized_station),
-        items=[],
-        unavailable_reason="mapped_only_phase_2a",
     )

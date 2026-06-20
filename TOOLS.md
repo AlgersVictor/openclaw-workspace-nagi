@@ -25,6 +25,10 @@ Skills 定義工具如何運作；本檔案記錄此環境特有的資訊。
   - 路徑：`/home/amakumo/.openclaw/workspace-nagi/skills/tdx-road-event/bin/tdx-city-road-query`
 - `tdx-topic-toggle`：TDX MQTT 通阻通知縣市群組開關
   - 路徑：`/home/amakumo/.openclaw/workspace-nagi/skills/tdx-topic-toggle/bin/tdx-topic-toggle`
+- `tdx-traffic-toggle`：Discord 交通事件推播縣市開關（道路/國道）
+  - 路徑：`/home/amakumo/.openclaw/workspace-nagi/skills/tdx-traffic-toggle/bin/tdx-traffic-toggle`
+- `tdx-air-fids`：台灣機場 FIDS 出發/抵達航班查詢（16 個機場）
+  - 路徑：`/home/amakumo/.openclaw/workspace-nagi/skills/tdx-air-fids/bin/tdx-air-fids`
 
 **所有 TDX skill 路徑均為硬式絕對路徑，禁止用環境變數拼接。**
 
